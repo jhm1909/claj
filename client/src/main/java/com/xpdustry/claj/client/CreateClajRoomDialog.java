@@ -24,6 +24,14 @@ public class CreateClajRoomDialog extends BaseDialog {
 
   public CreateClajRoomDialog() {
     super("@claj.manage.name");
+    
+    arc.Events.run(mindustry.game.EventType.HostEvent.class, () -> {
+      if (client != null) {
+        client.close();
+        client = null;
+      }
+    });
+    
     cont.defaults().width(Vars.mobile ? 550f : 750f);
     
     addCloseButton();

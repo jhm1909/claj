@@ -7,6 +7,7 @@ import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.FrameworkMessage;
 import arc.net.NetListener;
+import arc.net.NetSerializer;
 import arc.struct.Seq;
 import arc.util.Reflect;
 import arc.util.Strings;
@@ -28,8 +29,22 @@ import java.nio.ByteBuffer;
 import java.util.concurrent.ExecutorService;
 
 
-/** https://github.com/xzxADIxzx/Scheme-Size/blob/main/src/java/scheme/ClajIntegration.java */
-public class CLaJ {
+public class CLaJ extends Client {
+  private static arc.net.NetListener serverDispatcher;
+  
+  public CLaJ() {
+    super(8192, 16384, new Serializer());
+    Events.run(HostEvent.class, this::close);
+    Events.run(ClientPreConnectEvent.class, this::close);
+    
+    NetProvider provider = Reflect.get(Vars.net, "provider");
+    if (Vars.steam) provider = Reflect.get(provider, "provider"); // thanks
+
+    arc.net.Server server = Reflect.get(provider, "server");
+    serverDispatcher = Reflect.get(server, "dispatchListener");
+  }
+
+
   public static final Seq<Client> clients = new Seq<>();
   public static NetListener serverListener;
   
@@ -88,6 +103,7 @@ public class CLaJ {
     if (link == null) return false;
     
     Client client = new Client(8192, 8192, new Serializer());
+    
     Threads.daemon("CLaJ Redirector", client::run);
 
     client.addListener(serverListener);
@@ -127,8 +143,9 @@ public class CLaJ {
       success.run();
     });
   }
-  
-  public static void pingHost(String ip, int port, Cons<Long> success, Cons<Exception> failed) {
+/*
+  public void pingHost(String ip, int port, Cons<Long> success, Cons<Exception> failed) {
+    this.con
     worker.submit(() -> {
       try {
         
@@ -151,7 +168,7 @@ public class CLaJ {
       new FrameworkMessage.Ping();
     });
   }
-
+*/
   public static void clear() {
     clients.each(Client::close);
     clients.clear();

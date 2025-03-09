@@ -8,19 +8,21 @@ import arc.util.serialization.Jval;
 
 public class CLaJServers {
   public static final String publicServersLink = 
-      "https://github.com/xpdustry/Copy-Link-and-Join/blob/main/public-servers.hjson?raw=true";
+      "https://github.com/xpdustry/claj-v2/blob/main/public-servers.json?raw=true";
   public static final ArrayMap<String, String> online = new ArrayMap<>(),
                                                custom = new ArrayMap<>();
   
   public static synchronized void refreshOnline() {
     online.clear();
     // Public list
-    Http.get(publicServersLink)
+    //TODO: temporary
+    /*Http.get(publicServersLink)
         .error(error -> mindustry.Vars.ui.showErrorMessage("@claj.servers.fetch-failed" + error.getLocalizedMessage()))
         .block(result -> Jval.read(result.getResultAsString())
                              .asObject()
                              .forEach(e -> online.put(e.key, e.value.asString()))
-    );
+    );*/
+    online.put("Chaotic Neutral", "n3.xpdustry.com:7025");
   }
   
   @SuppressWarnings("unchecked")

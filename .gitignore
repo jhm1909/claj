@@ -1,6 +1,8 @@
-# Ignore Gradle project-specific cache directory
 .gradle
-
-# Ignore Gradle build output directory
+.settings
+.classpath
+.project
 build
-/bin/
+bin/
+claj-client.jar
+claj-server.jar

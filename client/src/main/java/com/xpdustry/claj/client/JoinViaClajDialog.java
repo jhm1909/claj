@@ -16,10 +16,10 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
 
     cont.table(table -> {
       table.add("@claj.join.link").padRight(5f).left();
-      table.field(lastLink, this::setLink).size(550f, 54f).maxTextLength(100).valid(this::setLink);
+      table.field(lastLink, this::setLink).size(550f, 54f).maxTextLength(100).valid(this::setLink).row();
+      table.add();
+      table.label(() -> output).width(550f).left().row();
     }).row();
-
-    cont.label(() -> output).width(550f).left();
 
     buttons.defaults().size(140f, 60f).pad(4f);
     buttons.button("@cancel", this::hide);
@@ -46,16 +46,18 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
       return;
     }
 
-    CLaJ.joinRoom(CLaJ.Link.fromString(lastLink), () -> {
-      Vars.ui.join.hide();
-      hide();
-    });
-
     Vars.ui.loadfrag.show("@connecting");
     Vars.ui.loadfrag.setButton(() -> {
       Vars.ui.loadfrag.hide();
       Vars.netClient.disconnectQuietly();
     });
+    
+    arc.util.Time.runTask(2f, () -> 
+      CLaJ.joinRoom(CLaJ.Link.fromString(lastLink), () -> {
+        Vars.ui.join.hide();
+        hide();
+      })
+    );
   }
   
   public boolean setLink(String link) {
@@ -76,7 +78,7 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
     if (key != CLaJ.Link.keyLength+CLaJ.Link.prefixLength) return "@claj.join.wrong-key-length";
 
     int semicolon = link.indexOf(':');
-    if (semicolon == key+1 || key == link.length()-2) return "@claj.join.missing-host";
+    if (semicolon == key+1 || key+1 == link.length()) return "@claj.join.missing-host";
     if (semicolon == -1) return "@claj.join.missing-port";
 
     int port = arc.util.Strings.parseInt(link.substring(semicolon+1));

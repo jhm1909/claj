@@ -5,27 +5,35 @@ import arc.func.Cons;
 import arc.net.Client;
 import arc.net.Connection;
 import arc.net.DcReason;
+import arc.net.FrameworkMessage;
 import arc.net.NetListener;
 import arc.struct.Seq;
 import arc.util.Reflect;
 import arc.util.Strings;
 import arc.util.Threads;
-
+import arc.util.Time;
 import mindustry.game.EventType.*;
 import mindustry.gen.Call;
 import mindustry.io.TypeIO;
+import mindustry.net.Host;
 import mindustry.net.ArcNetProvider.*;
 import mindustry.net.Net.NetProvider;
 import mindustry.Vars;
 
 import java.io.IOException;
+import java.net.DatagramPacket;
+import java.net.DatagramSocket;
+import java.net.InetAddress;
 import java.nio.ByteBuffer;
+import java.util.concurrent.ExecutorService;
 
 
 /** https://github.com/xzxADIxzx/Scheme-Size/blob/main/src/java/scheme/ClajIntegration.java */
 public class CLaJ {
   public static final Seq<Client> clients = new Seq<>();
   public static NetListener serverListener;
+  
+  private static final ExecutorService worker = Threads.unboundedExecutor("CLaJ Worker");
 
   public static void init() {
     Events.run(HostEvent.class, CLaJ::clear);
@@ -117,6 +125,30 @@ public class CLaJ {
       Vars.net.send(buffer, true);
       
       success.run();
+    });
+  }
+  
+  public static void pingHost(String ip, int port, Cons<Long> success, Cons<Exception> failed) {
+    worker.submit(() -> {
+      try {
+        
+        try(DatagramSocket socket = new DatagramSocket()){
+          long time = Time.millis();
+
+          socket.send(new DatagramPacket(new byte[]{-2, 1}, 2, InetAddress.getByName(address), port));
+          socket.setSoTimeout(2000);
+
+          DatagramPacket packet = packetSupplier.get();
+          socket.receive(packet);
+
+          ByteBuffer buffer = ByteBuffer.wrap(packet.getData());
+          Host host = NetworkIO.readServerData((int)Time.timeSinceMillis(time), packet.getAddress().getHostAddress(), buffer);
+          host.port = port;
+          return host;
+      }
+        
+      } catch (IOException e) { failed.get(e); }
+      new FrameworkMessage.Ping();
     });
   }
 

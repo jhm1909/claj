@@ -1,0 +1,40 @@
+import com.xpdustry.toxopid.spec.ModMetadata
+import com.xpdustry.toxopid.spec.ModPlatform
+//import com.xpdustry.toxopid.extension.anukeJitpack
+//import com.xpdustry.toxopid.extension.anukeXpdustry
+
+plugins {
+  id "java"
+  id "com.xpdustry.toxopid" version "4.1.0"
+}
+
+def metadata = ModMetadata.fromJson(file("../mod.hjson"))
+group = "com.xpdustry"
+version = metadata.version
+description = metadata.description
+
+java {
+  sourceCompatibility = JavaVersion.VERSION_1_8
+  targetCompatibility = JavaVersion.VERSION_1_8
+}
+
+repositories {
+  mavenCentral()
+  maven { url "https://maven.xpdustry.com/mindustry" }//anukeXpdustry()
+  maven { url "https://www.jitpack.io" }//anukeJitpack()
+}
+
+toxopid {
+    compileVersion = "v${metadata.minGameVersion}"
+    platforms = [ModPlatform.SERVER]
+}
+
+dependencies {
+    compileOnly toxopid.dependencies.arcCore
+    //compileOnly toxopid.dependencies.arcNet
+}
+
+jar {
+    archiveFileName.set("${metadata.name}-server.jar")
+    manifest.attributes["Main-Class"] = "com.xpdustry.claj.server.Main"
+}

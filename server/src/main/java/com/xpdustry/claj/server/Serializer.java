@@ -7,11 +7,12 @@ import arc.net.NetSerializer;
 
 import java.nio.ByteBuffer;
 
-public class Serializer implements NetSerializer {
 
+public class Serializer implements NetSerializer {
     public static final byte frameworkID = -2, linkID = -3;
     public ByteBuffer last = ByteBuffer.allocate(8192);
 
+    
     @Override
     public void write(ByteBuffer buffer, Object object) {
         if (object instanceof ByteBuffer raw) {

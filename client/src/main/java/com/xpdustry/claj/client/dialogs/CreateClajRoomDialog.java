@@ -1,6 +1,10 @@
-package com.xpdustry.claj.client;
+package com.xpdustry.claj.client.dialogs;
 
 import static mindustry.Vars.ui;
+
+import com.xpdustry.claj.client.Claj;
+import com.xpdustry.claj.client.ClajLink;
+import com.xpdustry.claj.client.ClajServers;
 
 import arc.graphics.Color;
 import arc.scene.ui.Button;

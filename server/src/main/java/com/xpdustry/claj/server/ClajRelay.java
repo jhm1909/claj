@@ -13,19 +13,8 @@ import arc.util.Ratekeeper;
 
 import java.io.IOException;
 
-/**
- * It is an entry point for clients, distributes their packets to redirectors.
- * 
- * @author xzxADIxzx
- */
-public class Distributor extends Server {
-    /** List of all characters that are allowed in a link. */
-    public static final char[] symbols = "AaBbCcDdEeFfGgHhIiJjKkLlMmNnOoPpQqRrSsTtUuVvWwYyXxZz".toCharArray();
-    /** CLaJ link prefix */
-    public static final String linkPrefix = "CLaJ";
-    /** CLaJ link length */
-    public static final int linkLength = 42;
-    
+
+public class ClajRelay extends Server {
     /** Limit for packet count sent within 3 sec that will lead to a disconnect. Note: only for clients. */
     public int spamLimit = 500;
 
@@ -35,7 +24,7 @@ public class Distributor extends Server {
     /** Map containing the connection id and its redirector. */
     public IntMap<Redirector> redirectors = new IntMap<>();
 
-    public Distributor() {
+    public ClajRelay() {
         super(32768, 8192, new Serializer());
         addListener(new Listener());
     }
@@ -73,9 +62,15 @@ public class Distributor extends Server {
     public String connectionIDToString(Connection connection) {
       return "0x"+Integer.toHexString(connection.getID());
     }
+    
+    public String getIP(Connection connection) {
+      return connection.getRemoteAddressTCP().getAddress().getHostAddress();
+    }
 
     // endregion
 
+    
+    
     public class Listener implements NetListener {
 
         @Override
@@ -150,7 +145,7 @@ public class Distributor extends Server {
                     Log.info("Connection @ created a room @.", connectionIDToString(connection), link);
                 } else if (link.startsWith("host")) {
                     var room = find(link.substring(4));
-                    if (room == null || !Main.getIP(room.host).equals(Main.getIP(connection))) {
+                    if (room == null || !getIP(room.host).equals(getIP(connection))) {
                         // kick the connection if it tries to host a redirector without permission
                         connection.close(DcReason.error); 
                         return;

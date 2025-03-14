@@ -1,4 +1,7 @@
-package com.xpdustry.claj.client;
+package com.xpdustry.claj.client.dialogs;
+
+import com.xpdustry.claj.client.Claj;
+import com.xpdustry.claj.client.ClajLink;
 
 import arc.scene.ui.layout.Stack;
 import arc.scene.ui.layout.Table;

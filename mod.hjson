@@ -1,5 +1,5 @@
 name: claj
-displayName: Copy Link and Join (CLaJ)
+displayName: "CLaJ v2[lightgray] - Copy Link and Join"
 author: "ZetaMap, xzxADIxzx"
 main: com.xpdustry.claj.client.Main
 description: "CLaJ (Copy Link and Join) allow you to play with your friends just by creating a room, copy the link and send it to your friends."

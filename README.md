@@ -1,5 +1,6 @@
 # Copy Link and Join v2 (CLaJ v2)
-This system allow you to play with your friends just by creating a room, copy the link, send it to your friends.
+This system allow you to play with your friends just by creating a room, copy the link, send it to your friends. <br>
+In fact it's pretty much the same thing as Hamachi, but in a Mindustry mod.
 
 This is a bundled, reworked and optimized version of the [CLaJ server](https://github.com/xzxADIxzx/Copy-Link-and-Join) and the [xzxADIxzx's Scheme-Size mod](https://github.com/xzxADIxzx/Scheme-Size), with only the CLaJ feature.
 
@@ -28,7 +29,7 @@ To change the memory allocated to the server, change the command to ``java -Xms<
 
 > [!IMPORTANT]
 > Please note that, if you plan to make the server public, you can create a Pull-Request to add it to the public server list, in [public-servers.json](https://github.com/xpdustry/claj-v2/blob/main/public-servers.json). <br><br>
-> Also, CLaJ servers are high bandwidth consumers, as they act as proxies. For an average server, around 1TB up/down of consumption per month and around 1MB/s of constant network usage.
+> Also, CLaJ servers are high bandwidth consumers, as they act as relay. For an average server, around 1TB up/down of consumption per month and around 1MB/s of constant network usage.
 
 
 ## How to build
@@ -39,8 +40,15 @@ To build the client version, simply run the command ``./gradlew client:build``. 
 To build the server version, simply run the command ``./gradlew server:build``. The jar file will be located in the root directory and named ``claj-server.jar``.
 
 
+## How it works
+
+
+
 ## Notes
 * make a system to remove the claj server from the dosBlacklist, because if a client send too many packets, the host will sets the claj server address to the list, because for him, it's only n connections from the same address (the claj server). And same for clients.
 * The current server implementation doesn't know where to send packets, so the host need to keep alive a connection for each client and send n times the same packet for each connection, like that the server use the connection id to know where send the packets. <br>
 So need to make a packet wrapper that add the target connection using the id, given by the server when a new player join the room. <br>
 Note: need to see the steam implementation for inspiration. 
+* The playerLimit doesn't count player connected via CLaJ. <br>
+In fact, the host player's server never receives the packets from peoples connected via CLaJ, the job is done by the CLaJ Proxy which simply runs the host player's server callbacks.
+* In fact CLaJ is a reverse vpn. XD

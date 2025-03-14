@@ -7,14 +7,13 @@ import mindustry.Vars;
 
 
 public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
-  String lastLink = "claj://";
+  String lastLink = "CLaJLink#ip:port";
   boolean valid;
   String output;
 
   public JoinViaClajDialog() {
     super("@claj.join.name");
 
-    cont.labelWrap("@claj.join.note").padBottom(10f).left().row();
     cont.table(table -> {
       table.add("@claj.join.link").padRight(5f).left();
       table.field(lastLink, this::setLink).size(550f, 54f).maxTextLength(100).valid(this::setLink).row();
@@ -40,11 +39,10 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
       return;
     }
     
-    ClajLink link;
-    try { link = ClajLink.fromString(lastLink); } 
-    catch (Exception e) {
-      valid = false;
-      Vars.ui.showErrorMessage(arc.Core.bundle.get("claj.join.invalid") + ' ' + e.getLocalizedMessage());
+    output = validateLink(lastLink);
+    valid = output.equals("@claj.join.valid");
+    if (!valid) {
+      Vars.ui.showErrorMessage(output);
       return;
     }
 
@@ -55,7 +53,7 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
     });
     
     arc.util.Time.runTask(2f, () -> 
-      Claj.joinRoom(link, () -> {
+      CLaJ.joinRoom(CLaJ.Link.fromString(lastLink), () -> {
         Vars.ui.join.hide();
         hide();
       })
@@ -65,15 +63,27 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
   public boolean setLink(String link) {
     if (lastLink.equals(link)) return valid;
 
+    output = validateLink(lastLink);
+    valid = output.equals("@claj.join.valid");
     lastLink = link;
-    try { 
-      ClajLink.fromString(lastLink); 
-      output = "@claj.join.valid";
-      return valid = true;
-      
-    } catch (Exception e) {
-      output = arc.Core.bundle.get("claj.join.invalid") + ' ' + e.getLocalizedMessage();
-      return valid = false;
-    }
+    return valid;
+  }
+  
+  String validateLink(String link) {
+    link = link.trim();
+    if (!link.startsWith(CLaJ.Link.prefix)) return "@claj.join.missing-prefix";
+
+    int key = link.indexOf('#');
+    if (key == -1 || key == CLaJ.Link.prefixLength) return "@claj.join.missing-key";
+    if (key != CLaJ.Link.keyLength+CLaJ.Link.prefixLength) return "@claj.join.wrong-key-length";
+
+    int semicolon = link.indexOf(':');
+    if (semicolon == key+1 || key+1 == link.length()) return "@claj.join.missing-host";
+    if (semicolon == -1) return "@claj.join.missing-port";
+
+    int port = arc.util.Strings.parseInt(link.substring(semicolon+1));
+    if (port < 0 || port > 65535) return "@claj.join.invalid-port";
+
+    return "@claj.join.valid";
   }
 }

@@ -22,11 +22,13 @@ public class Main {
       // Ignore SocketException errors
       ArcNet.errorHandler = e -> { if (!(Strings.getFinalCause(e) instanceof java.net.SocketException)) Log.err(e); };
       Log.logger = (level, text) -> {
-        //err has red text instead of reset.
-        if(level == Log.LogLevel.err) text = text.replace(ColorCodes.reset, ColorCodes.lightRed + ColorCodes.bold);
-  
-        text = Log.format(Strings.format(logFormat, dateformat.format(LocalDateTime.now()), tags[level.ordinal()], text));
-        System.out.println(text);
+        for (String line : text.split("\n")) {
+          //err has red text instead of reset.
+          if(level == Log.LogLevel.err) line = line.replace(ColorCodes.reset, ColorCodes.lightRed + ColorCodes.bold);
+    
+          line = Log.format(Strings.format(logFormat, dateformat.format(LocalDateTime.now()), tags[level.ordinal()], line));
+          System.out.println(line);          
+        }
       };
       Log.formatter = (text, useColors, arg) -> {
         text = Strings.format(text.replace("@", "&fb&lb@&fr"), arg);
@@ -52,6 +54,7 @@ public class Main {
 
     } catch (Throwable t) {
       Log.err("Failed to load server", t);
+      return;
     }
     
     // Start the server
@@ -59,7 +62,7 @@ public class Main {
     catch (Throwable t) { Log.err(t); } 
     finally {
       relay.close();
-      ClajConfig.forcesave();
+      ClajConfig.save();
       Log.info("Server closed.");
     }
   }

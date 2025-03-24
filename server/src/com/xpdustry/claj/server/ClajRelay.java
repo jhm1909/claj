@@ -20,7 +20,6 @@ import arc.util.io.ByteBufferOutput;
 
 public class ClajRelay extends Server implements NetListener {
   public final LongMap<ClajRoom> rooms = new LongMap<>();
-  private boolean closed;
 
   public ClajRelay() {
     super(32768, 8192, new Serializer());
@@ -28,9 +27,7 @@ public class ClajRelay extends Server implements NetListener {
   }
 
   @Override
-  public void close() {
-    if (closed) return;
-    
+  public void stop() {
     if (ClajConfig.warnClosing) {
       Log.info("Notifying that the server is closing...");
       
@@ -40,17 +37,17 @@ public class ClajRelay extends Server implements NetListener {
           e.value.message("The server is shutting down, please wait a minute or choose another server.");
         // Give time to message to be send to all clients
         Thread.sleep(2000);     
-      } catch (Exception ignored) {}
+      } catch (Throwable ignored) {}
     }
 
     // Close rooms
-    for (LongMap.Entry<ClajRoom> e : rooms)
-      e.value.close();
+    try { 
+      for (LongMap.Entry<ClajRoom> e : rooms) 
+        e.value.close();  
+    } catch (Throwable ignored) {}
     rooms.clear();
     // Close server
-    super.close();
-    
-    closed = true;
+    super.stop();
   }
   
   @Override

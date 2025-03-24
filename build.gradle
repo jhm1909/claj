@@ -72,13 +72,21 @@ project(":server") {
   toxopid.platforms = [ModPlatform.SERVER]
 
   dependencies {
-    compileOnly toxopid.dependencies.arcCore
-    //compileOnly toxopid.dependencies.arcHeadless
+    implementation toxopid.dependencies.arcCore
+    implementation "com.github.Anuken.Arc:arcnet:${toxopid.compileVersion}"
+    //implementation toxopid.dependencies.arcHeadless
   }
   
   jar {
     archiveFileName = "${metadata.name}-server.jar"
     manifest.attributes["Main-Class"] = "com.xpdustry.claj.server.Main"
+    
+    // Includes arc libs
+    from {
+      configurations.runtimeClasspath.collect {
+        it.isDirectory() ? it : zipTree(it)
+      }
+    }
     
     //copy the builded jar to the working directory
     doLast {

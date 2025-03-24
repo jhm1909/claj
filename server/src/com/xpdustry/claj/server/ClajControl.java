@@ -48,7 +48,7 @@ public class ClajControl extends arc.util.CommandHandler {
     register("help", "Display the command list.", args -> {
       Log.info("Commands:");
       getCommandList().each(c -> 
-        Log.info("| &b&lb " + c.text + (c.paramText.isEmpty() ? "" : " &lc&fi") + c.paramText + 
+        Log.info("&lk|&fr &b&lb" + c.text + (c.paramText.isEmpty() ? "" : " &lc&fi") + c.paramText + 
                  "&fr - &lw" + c.description));
     });
     
@@ -58,13 +58,18 @@ public class ClajControl extends arc.util.CommandHandler {
     });
 
     register("rooms", "Displays created rooms.", args -> {
+      if (server.rooms.isEmpty()) {
+        Log.info("No created rooms.");
+        return;
+      }
+      
       Log.info("Rooms:");
       server.rooms.forEach(r -> {
-          Log.info("| Room @:", r.value.idToString());
-          Log.info("| | [H] Connection @&fr - @", Strings.conIDToString(r.value.host), Strings.getIP(r.value.host));
-          r.value.clients.forEach(e -> 
-            Log.info("| | [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
-          );
+        Log.info("&lk|&fr Room @:", r.value.idToString());
+        Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.value.host), Strings.getIP(r.value.host));
+        r.value.clients.forEach(e -> 
+          Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
+        );
       });
     });
 
@@ -87,8 +92,11 @@ public class ClajControl extends arc.util.CommandHandler {
 
     register("blacklist", "[add|del] [IP]", "Manages the IP blacklist.", args -> {
       if (args.length == 0) {
-        Log.info("Blacklist:");
-        ClajConfig.blacklist.each(ip -> Log.info("| IP: @", ip));
+        if (ClajConfig.blacklist.isEmpty()) Log.info("Blacklist is empty.");
+        else {
+          Log.info("Blacklist:");
+          ClajConfig.blacklist.each(ip -> Log.info("&lk|&fr IP: @", ip));  
+        }
 
       } else if (args.length == 1) {
         Log.err("Missing IP argument.");

@@ -33,6 +33,8 @@ To change the memory allocated to the server, change the command to ``java -Xms<
 
 
 ## How to build
+**First you need java 17 or above, to compile this project. To run, java 8 is enough. **
+
 Pre-build releases can be found in the [releases section](https://github.com/Xpdustry/claj-v2/releases), but if you want to build the project yourself, follow the steps above.
 
 To build the client version, simply run the command ``./gradlew client:build``. The jar file will be located in the root directory and named ``claj-client.jar``.

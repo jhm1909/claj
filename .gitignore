@@ -2,7 +2,7 @@
 .settings
 .classpath
 .project
-build
+build/
 bin/
 claj-client.jar
 claj-server.jar

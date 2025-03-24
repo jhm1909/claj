@@ -43,12 +43,12 @@ To build the server version, simply run the command ``./gradlew server:build``. 
 
 
 ## How it works
-CLaJ is a system like [Hamachi](https://vpn.net/), that allows you to create a room and share the link with your friends. This way, they can connect to you as if they were on your private network.
+CLaJ is a system like [Hamachi](https://vpn.net/), that allows you to create a room and share the link to your friends. This way, they can connect to you as if they were on your private network.
 
 The only differences are that Hamachi requires account creation and therefore the collection of personal information, etc., while CLaJ does not. And CLaJ is directly integrated into Mindustry and optimized for it, which makes it easier to use compared to Hamachi, which needs to stay in parallel of the game.
 
 
-## Know issues
+## Known issues
 * make a system to remove the claj server from the dosBlacklist, because if a client send too many packets, the host will adds the server address to the list. Because for him, it's only n connections from the same address (the claj server). And same for all clients.
 * The playerLimit doesn't count player connected via CLaJ. <br>
 In fact, the host player's server never receives the packets from peoples connected via CLaJ, the job is done by the CLaJ Proxy which simply runs the host player's server callbacks.

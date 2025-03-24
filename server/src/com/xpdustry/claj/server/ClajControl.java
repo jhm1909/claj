@@ -1,89 +1,123 @@
 package com.xpdustry.claj.server;
 
-import arc.util.CommandHandler;
-import arc.util.CommandHandler.CommandResponse;
-import arc.util.CommandHandler.ResponseType;
 import arc.util.Log;
-import arc.util.Strings;
-import arc.util.Threads;
 
 import java.util.Scanner;
 
+import com.xpdustry.claj.server.util.Strings;
 
-public class ClajControl {
-  public final CommandHandler handler = new CommandHandler("");
-  public final ClajRelay server;
 
+public class ClajControl extends arc.util.CommandHandler {
   public ClajControl(ClajRelay server) {
-    this.server = server;
-    registerCommands();
+    super("");
+    registerCommands(server);
 
-    Threads.daemon("Server Control", () -> {
+    arc.util.Threads.daemon("Server Control", () -> {
       try (Scanner scanner = new Scanner(System.in)) {
         while (scanner.hasNext()) handleCommand(scanner.nextLine());
       }
     });
   }
 
-  void handleCommand(String command) {
-    CommandResponse response = handler.handleMessage(command);
+  public void handleCommand(String line){
+    CommandResponse response = handleMessage(line);
 
     if (response.type == ResponseType.unknownCommand) {
-      String closest = handler.getCommandList().map(cmd -> cmd.text).min(cmd -> Strings.levenshtein(cmd, command));
-      Log.err("Command not found. Did you mean @?", closest);
-    } else if (response.type != ResponseType.noCommand && response.type != ResponseType.valid)
-      Log.err("Too @ command arguments.", response.type == ResponseType.fewArguments ? "few" : "many");
+      int minDst = 0;
+      Command closest = null;
+
+      for (Command command : getCommandList()) {
+        int dst = Strings.levenshtein(command.text, response.runCommand);
+        if (dst < 3 && (closest == null || dst < minDst)) {
+          minDst = dst;
+          closest = command;
+        }
+      }
+
+      if (closest != null) Log.err("Command not found. Did you mean \"" + closest.text + "\"?");
+      else Log.err("Invalid command. Type 'help' for help.");
+    }
+    else if(response.type == ResponseType.fewArguments)
+      Log.err("Too few command arguments. Usage: " + response.command.text + " " + response.command.paramText);
+    else if(response.type == ResponseType.manyArguments)
+      Log.err("Too many command arguments. Usage: " + response.command.text + " " + response.command.paramText);
   }
 
-  void registerCommands() {
-      handler.register("help", "Display the command list.", args -> {
-          Log.info("Commands:");
-          handler.getCommandList().each(command -> Log.info("  &b&lb@@&fr - @",
-                  command.text, command.paramText.isEmpty() ? "" : " &lc&fi" + command.paramText, command.description));
-      });
 
-      handler.register("list", "Displays all current rooms.", args -> {
-          Log.info("Rooms:");
-          server.rooms.forEach(entry -> {
-              Log.info("  &b&lbRoom @&fr", entry.value.link);
-              entry.value.redirectors.each(r -> {
-                  Log.info("    [H] &b&lbConnection @&fr - @", r.host.getID(), server.getIP(r.host));
-                  if (r.client == null) return;
-                  Log.info("    [C] &b&lbConnection @&fr - @", r.client.getID(), server.getIP(r.client));
-              });
-          });
-      });
+  void registerCommands(ClajRelay server) {
+    register("help", "Display the command list.", args -> {
+      Log.info("Commands:");
+      getCommandList().each(c -> 
+        Log.info("| &b&lb " + c.text + (c.paramText.isEmpty() ? "" : " &lc&fi") + c.paramText + 
+                 "&fr - &lw" + c.description));
+    });
+    
+    register("exit", "Stop the server.", args -> {
+      Log.info("Shutting down CLaJ server.");
+      server.stop();
+    });
 
-      handler.register("limit", "[amount]", "Sets spam packet limit.", args -> {
-          if (args.length == 0)
-              Log.info("Current limit - @ packets per 3 seconds.", server.spamLimit);
-          else {
-              server.spamLimit = Strings.parseInt(args[0], 300);
-              Log.info("Packet spam limit set to @ packets per 3 seconds.", server.spamLimit);
-          }
+    register("rooms", "Displays created rooms.", args -> {
+      Log.info("Rooms:");
+      server.rooms.forEach(r -> {
+          Log.info("| Room @:", r.value.idToString());
+          Log.info("| | [H] Connection @&fr - @", Strings.conIDToString(r.value.host), Strings.getIP(r.value.host));
+          r.value.clients.forEach(e -> 
+            Log.info("| | [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
+          );
       });
+    });
 
-      handler.register("ban", "<IP>", "Adds the IP to blacklist.", args -> {
-          Blacklist.add(args[0]);
-          Log.info("IP @ has been blacklisted.", args[0]);
-      });
+    register("limit", "[amount]", "Sets spam packet limit. (0 to disable)", args -> {
+      if (args.length == 0) {
+        if (ClajConfig.spamLimit == 0) Log.info("Current limit: disabled.");
+        else Log.info("Current limit: @ packets per 3 seconds.", ClajConfig.spamLimit);
+      } else {
+        int limit = Strings.parseInt(args[0]);
+        if (limit < 0) {
+          Log.err("Invalid input.");
+          return;
+        }
+        ClajConfig.spamLimit = limit;
+        if (ClajConfig.spamLimit == 0) Log.info("Packet spam limit disabled.");
+        else Log.info("Packet spam limit set to @ packets per 3 seconds.", ClajConfig.spamLimit);
+        ClajConfig.save();
+      }
+    });
 
-      handler.register("unban", "<IP>", "Removes the IP from blacklist.", args -> {
-          Blacklist.remove(args[0]);
-          Log.info("IP @ has been removed from blacklist.", args[0]);
-      });
+    register("blacklist", "[add|del] [IP]", "Manages the IP blacklist.", args -> {
+      if (args.length == 0) {
+        Log.info("Blacklist:");
+        ClajConfig.blacklist.each(ip -> Log.info("| IP: @", ip));
 
-      handler.register("refresh", "Unbans all IPs and refresh GitHub Actions IPs.", args -> {
-          Blacklist.clear();
-          Blacklist.refresh();
-      });
+      } else if (args.length == 1) {
+        Log.err("Missing IP argument.");
 
-      handler.register("exit", "Stop hosting distributor and exit the application.", args -> {
-          server.rooms.forEach(entry -> 
-            entry.value.sendMessage("[scarlet]\u26A0[] The server is shutting down.\nTry to reconnect in a minute."));
+      } else if (args[0].equals("add")) {
+        if (ClajConfig.blacklist.addUnique(args[0])) {
+          ClajConfig.save();
+          Log.info("IP added to blacklist.");
+        } else Log.err("IP already blacklisted.");
+        
+      } else if (args[0].equals("del")) {
+        if (ClajConfig.blacklist.remove(args[0])) {
+          ClajConfig.save();
+          Log.info("IP removed from blacklist.");  
+        } else Log.err("IP not blacklisted.");
+        
+      } else Log.err("Invalid argument. Must be 'add' or 'del'.");
+    });
 
-          Log.info("Shutting down CLaJ server.");
-          server.stop();
-      });
+    register("warn-deprecated", "Warn the client if their CLaJ version is obsolete.", args -> {
+      ClajConfig.warnDeprecated = !ClajConfig.warnDeprecated;
+      Log.info("Warn message when a client using an obsolete CLaJ version @.", 
+               ClajConfig.warnDeprecated ? "enabled" : "disabled");
+    });
+    
+    register("warn-closing", "Warn all clients when the server is closing.", args -> {
+      ClajConfig.warnClosing = !ClajConfig.warnClosing;
+      Log.info("Warn message when closing the server @.", ClajConfig.warnClosing ? "enabled" : "disabled");
+    });
+    
   }
 }

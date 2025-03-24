@@ -11,7 +11,7 @@ import arc.util.io.ByteBufferOutput;
 /** @implNote This class must be the same for the client and the server. */
 public class ClajPackets {
   /** Identifier for CLaJ packets */
-  public static final byte id = -3;
+  public static final byte id = -4; /*doesn't uses old claj packet identifier to avoid problems*/
   
   protected static final ArrayMap<Class<?>, Prov<? extends Packet>> packets = new ArrayMap<>();
   
@@ -47,8 +47,8 @@ public class ClajPackets {
   /****************************/
   
   public static abstract class Packet {
-    public void read(ByteBufferInput read) {}
-    public void write(ByteBufferOutput write) {}
+    public void read(ByteBufferInput read) {};
+    public void write(ByteBufferOutput write) {};
   }
   
   public static abstract class ConnectionWrapperPacket extends Packet {
@@ -64,8 +64,8 @@ public class ClajPackets {
       write0(write);
     }
     
-    public void read0(ByteBufferInput read) {}
-    public void write0(ByteBufferOutput write) {}
+    public void read0(ByteBufferInput read) {};
+    public void write0(ByteBufferOutput write) {};
   }
 
   /** Special packet for connection packet wrapping. */

@@ -37,7 +37,7 @@ public class ClajRelay extends Server implements NetListener {
       try {
         // Notify all rooms that the server will be closed
         for (LongMap.Entry<ClajRoom> e : rooms) 
-          e.value.message("The server is closing, please wait or choose another server.");
+          e.value.message("The server is shutting down, please wait a minute or choose another server.");
         // Give time to message to be send to all clients
         Thread.sleep(2000);     
       } catch (Exception ignored) {}
@@ -90,7 +90,7 @@ public class ClajRelay extends Server implements NetListener {
     ClajRoom room = find(connection);
     
     // Simple packet spam protection
-    if (!rate.allow(3000L, ClajConfig.spamLimit)) {
+    if (ClajConfig.spamLimit > 0 && !rate.allow(3000L, ClajConfig.spamLimit)) {
       rate.occurences = -ClajConfig.spamLimit; // reset to prevent message spam
       
       if (room != null && room.host == connection) {
@@ -212,7 +212,7 @@ public class ClajRelay extends Server implements NetListener {
         packet.write(new ByteBufferOutput(buffer));
         
       } else if (ClajConfig.warnDeprecated && (object instanceof String)) {
-        buffer.put(ClajPackets.id);
+        buffer.put((byte)-3/*old claj version*/);
         try { new ByteBufferOutput(buffer).writeUTF((String)object); }
         catch (Exception e) { throw new RuntimeException(e); }
       }
@@ -223,12 +223,11 @@ public class ClajRelay extends Server implements NetListener {
       byte id = buffer.get();
 
       if (id == -2/*framework id*/) return readFramework(buffer);
+      if (ClajConfig.warnDeprecated && id == -3/*old claj version*/) {
+        try { return new ByteBufferInput(buffer).readUTF(); }
+        catch (Exception e) { throw new RuntimeException(e); }
+      }
       if (id == ClajPackets.id) {
-        if (ClajConfig.warnDeprecated)  {
-          //TODO
-          
-        }
-        
         ClajPackets.Packet packet = ClajPackets.newPacket(id);
         packet.read(new ByteBufferInput(buffer));
         return packet;

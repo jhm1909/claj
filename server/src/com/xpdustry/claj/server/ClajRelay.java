@@ -111,7 +111,7 @@ public class ClajRelay extends Server implements NetListener {
       // Compatibility for the xzxADIxzx's version
       if (ClajConfig.warnDeprecated) {
         connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! "
-                         + "Please update it by removing the 'scheme-size' mod and installing the 'claj-v2' mod, "
+                         + "Please update it by removing the 'scheme size' mod and installing the 'claj v2' mod, "
                          + "in the mod browser.");
         connection.close(DcReason.error);
       }

@@ -1,9 +1,12 @@
 package com.xpdustry.claj.client;
 
+import java.io.IOException;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
 
 import arc.func.Cons;
+import arc.net.ArcNetException;
+import arc.net.Client;
 import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.NetListener;
@@ -17,7 +20,7 @@ import mindustry.Vars;
 import mindustry.gen.Call;
 
 
-public class ClajProxy extends arc.net.Client implements NetListener {
+public class ClajProxy extends Client implements NetListener {
   public static int defaultTimeout = 5000; //ms
   
   private final IntMap<VirtualConnection> connections = new IntMap<>();
@@ -26,6 +29,7 @@ public class ClajProxy extends arc.net.Client implements NetListener {
   private Cons<Long> roomCreated;
   private Runnable roomClosed;
   private long roomId = -1;
+  private volatile boolean shutdown;
   
   /** No-op rate keeper, to avoid the player's server from life blacklisting the claj server . */
   private Ratekeeper noopRate = new Ratekeeper() {
@@ -55,13 +59,39 @@ public class ClajProxy extends arc.net.Client implements NetListener {
     connect(defaultTimeout, host, udpTcpPort, udpTcpPort);
   }
   
-  // TODO: redefine #run() and #stop() to handle exceptions and restart update loop if needed
+  /** redefine #run() and #stop() to handle exceptions and restart update loop if needed */
+  @Override
+  public void run() {
+    shutdown = false;
+    while(!shutdown) {
+      try { update(250); } 
+      catch (IOException ex) { close(); } 
+      catch (ArcNetException ex) {
+        if (roomId == -1) {
+          close();
+          Reflect.set(Client.class, this, "lastProtocolError", ex);
+          throw ex;
+        }
+      }
+    }
+  }
+  
+  /** redefine #run() and #stop() to handle exceptions and restart update loop if needed */
+  @Override
+  public void stop() {
+    if(shutdown) return;
+    close();
+    shutdown = true;
+    // For me it's showing an error, but there is no error....
+    Reflect.<java.nio.channels.Selector>get(Client.class, this, "selector").wakeup();
+  }
   
   public long roomId() {
     return roomId;
   }
   
   public void closeRoom() {
+    roomId = -1;
     sendTCP(new ClajPackets.RoomCloseRequestPacket());
     close();
   }
@@ -74,11 +104,11 @@ public class ClajProxy extends arc.net.Client implements NetListener {
 
   @Override
   public void disconnected(Connection connection, DcReason reason) {
+    roomId = -1;
     // We cannot communicate with the server anymore, so close all connections
     connections.forEach(e -> e.value.closeFromProxy(reason));
     connections.clear();
     if (roomClosed != null) roomClosed.run();
-    roomId = -1;
   }
 
   @Override

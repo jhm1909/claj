@@ -37,7 +37,7 @@ public class ClajRelay extends Server implements NetListener {
         rooms.forEach(e -> 
           e.value.message("The server is shutting down, please wait a minute or choose another server."));
         
-        // Yea we needs a new thread... because we don't have the arc.Timer
+        // Yea we needs a new thread... because we don't have arc.Timer
         Threads.daemon(() -> {
           // Give time to message to be send to all clients
           try { Thread.sleep(2000); }

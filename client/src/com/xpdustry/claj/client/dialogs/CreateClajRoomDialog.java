@@ -36,11 +36,12 @@ public class CreateClajRoomDialog extends BaseDialog {
     super("@claj.manage.name");
     arc.Events.run(mindustry.game.EventType.HostEvent.class, this::closeRoom);
     
-    cont.defaults().width(Vars.mobile ? 550f : 850f);
+    cont.defaults().width(Vars.mobile ? 480f : 850f);
     
     makeButtonOverlay();
     addCloseButton();
     buttons.button("@claj.manage.create", Icon.add, this::createRoom).disabled(b -> !Claj.isRoomClosed() || selected == null);
+    if (Vars.mobile) buttons.row();
     buttons.button("@claj.manage.delete", Icon.cancel, this::closeRoom).disabled(b -> Claj.isRoomClosed());
     buttons.button("@claj.manage.copy", Icon.copy, this::copyLink).disabled(b -> link == null);
     
@@ -127,15 +128,17 @@ public class CreateClajRoomDialog extends BaseDialog {
       hosts.image().growX().padTop(5).padBottom(5).height(3).color(Pal.accent).row();
       hosts.collapser(table -> online = table, false, () -> onlineShown).growX().padBottom(10);
       hosts.row();
-    }).marginBottom(70f).get().setScrollingDisabled(true, false);
+      
+      hosts.marginBottom(Vars.mobile ? 140f : 70f);
+    }).get().setScrollingDisabled(true, false);
 
     // Adds the 'Create a CLaJ room' button
     Vars.ui.paused.shown(() -> {
       Table root = Vars.ui.paused.cont;
 
       if (Vars.mobile) 
-        root.row().buttonRow("@claj.manage.name", Icon.planet, this::show)//.colspan(3)
-                  .disabled(button -> !Vars.net.server());
+        root.row().buttonRow("@claj.manage.name", Icon.planet, this::show)
+                  .disabled(button -> !Vars.net.server()).row();
       else
         root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
                   .disabled(button -> !Vars.net.server()).row();
@@ -143,7 +146,7 @@ public class CreateClajRoomDialog extends BaseDialog {
       @SuppressWarnings("rawtypes")
       arc.struct.Seq<Cell> buttons = root.getCells();
       // move the claj button above the quit button
-      buttons.swap(buttons.size - 1, buttons.size - 2); 
+      buttons.swap(buttons.size-1, buttons.size-2); 
     });
   }
   
@@ -197,25 +200,44 @@ public class CreateClajRoomDialog extends BaseDialog {
       
       if (editable) {
         final int i0 = i;
-        inner.button(Icon.pencilSmall, Styles.emptyi, () -> {
-          renaming = server;
-          renamingOldKey = i0;
-          add.show();
-        }).pad(4).right();
-        
-        inner.button(Icon.trashSmall, Styles.emptyi, () -> {
-          ui.showConfirm("@confirm", "@server.delete", () -> {
-              servers.removeKey(server.name);
-              if (deleted != null) deleted.run();
-          });
-        }).pad(2).right();
+        if (Vars.mobile) {
+          inner.button(Icon.pencil, Styles.emptyi, () -> {
+            renaming = server;
+            renamingOldKey = i0;
+            add.show();
+          }).size(30f).pad(2, 5, 2, 5).right();
+          
+          inner.button(Icon.trash, Styles.emptyi, () -> {
+            ui.showConfirm("@confirm", "@server.delete", () -> {
+                servers.removeKey(server.name);
+                if (deleted != null) deleted.run();
+            });
+          }).size(30f).pad(2, 5, 2, 5).right();
+          
+        } else {
+          inner.button(Icon.pencilSmall, Styles.emptyi, () -> {
+            renaming = server;
+            renamingOldKey = i0;
+            add.show();
+          }).pad(4).right();
+          
+          inner.button(Icon.trashSmall, Styles.emptyi, () -> {
+            ui.showConfirm("@confirm", "@server.delete", () -> {
+                servers.removeKey(server.name);
+                if (deleted != null) deleted.run();
+            });
+          }).pad(2).right();
+        }
       }
 
       ping.label(() -> Strings.animated(Time.time, 4, 11, ".")).pad(2).color(Pal.accent).left();
       Claj.pingHost(server.ip, server.port, ms -> {
         ping.clear();
         ping.image(Icon.ok).color(Color.green).padLeft(5).padRight(5).left();
-        ping.add(ms+"ms").color(Color.lightGray).padRight(5).left();
+        if (Vars.mobile) 
+             ping.row().add(ms+"ms").color(Color.lightGray).padLeft(5).padRight(5).left();
+        else ping.add(ms+"ms").color(Color.lightGray).padRight(5).left();
+        
       }, e -> {
         ping.clear();
         ping.image(Icon.cancel).color(Color.red).padLeft(5).padRight(5).left();

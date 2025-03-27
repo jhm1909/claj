@@ -34,8 +34,8 @@ public class ClajRelay extends Server implements NetListener {
       
       try {
         // Notify all rooms that the server will be closed
-        rooms.forEach(e -> 
-          e.value.message("The server is shutting down, please wait a minute or choose another server."));
+        rooms.values().forEach(r -> 
+          r.message("The server is shutting down, please wait a minute or choose another server."));
         
         // Yea we needs a new thread... because we don't have arc.Timer
         Threads.daemon(() -> {
@@ -54,7 +54,7 @@ public class ClajRelay extends Server implements NetListener {
   }
   
   public void closeRooms() {
-    try { rooms.forEach(e -> e.value.close()); } 
+    try { rooms.values().forEach(ClajRoom::close); } 
     catch (Throwable ignored) {}
     rooms.clear();
   }

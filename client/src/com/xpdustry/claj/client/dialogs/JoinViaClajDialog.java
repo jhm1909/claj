@@ -3,9 +3,6 @@ package com.xpdustry.claj.client.dialogs;
 import com.xpdustry.claj.client.Claj;
 import com.xpdustry.claj.client.ClajLink;
 
-import arc.scene.ui.layout.Stack;
-import arc.scene.ui.layout.Table;
-
 import mindustry.Vars;
 
 
@@ -33,12 +30,13 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
     buttons.button("@ok", this::joinRoom).disabled(button -> !valid || lastLink.isEmpty() || Vars.net.active());
     
     //Adds the 'Join via CLaJ' button
-    Table root = (Table)((Stack)Vars.ui.join.getChildren().get(1)).getChildren().get(1);
-    root.button("@claj.join.name", mindustry.gen.Icon.play, this::show).row();
-    // poor mobile players =<
-    if (!Vars.steam && !Vars.mobile) root.getCells().insert(4, root.getCells().remove(6));
-    else {
-      root.getCells().insert(3, root.getCells().remove(4));
+    if (!Vars.steam && !Vars.mobile) {
+      Vars.ui.join.buttons.button("@claj.join.name", mindustry.gen.Icon.play, this::show).row();
+      Vars.ui.join.buttons.getCells().swap(6, 4);//.insert(4, root.getCells().remove(6));
+    } else {
+      // adds in a new line for mobile players
+      Vars.ui.join.buttons.row().add().growX().width(-1);
+      Vars.ui.join.buttons.button("@claj.join.name", mindustry.gen.Icon.play, this::show).row();
     }
   }
 

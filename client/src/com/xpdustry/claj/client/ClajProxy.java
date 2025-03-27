@@ -106,7 +106,7 @@ public class ClajProxy extends Client implements NetListener {
   public void disconnected(Connection connection, DcReason reason) {
     roomId = -1;
     // We cannot communicate with the server anymore, so close all connections
-    connections.forEach(e -> e.value.closeFromProxy(reason));
+    connections.values().forEach(c -> c.closeFromProxy(reason));
     connections.clear();
     if (roomClosed != null) roomClosed.run();
   }

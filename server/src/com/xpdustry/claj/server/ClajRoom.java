@@ -143,7 +143,7 @@ public class ClajRoom implements NetListener {
     
     host.close(DcReason.closed);
     synchronized (clients) {
-      clients.forEach(e -> e.value.close(DcReason.closed));
+      clients.values().forEach(c -> c.close(DcReason.closed));
       clients.clear();  
     }
     

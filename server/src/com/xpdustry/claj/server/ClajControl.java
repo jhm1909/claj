@@ -87,10 +87,10 @@ public class ClajControl extends arc.util.CommandHandler {
       }
       
       Log.info("Rooms:");
-      server.rooms.forEach(r -> {
-        Log.info("&lk|&fr Room @:", r.value.idToString());
-        Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.value.host), Strings.getIP(r.value.host));
-        r.value.clients.forEach(e -> 
+      server.rooms.values().forEach(r -> {
+        Log.info("&lk|&fr Room @:", r.idToString());
+        Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.host), Strings.getIP(r.host));
+        r.clients.forEach(e -> 
           Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
         );
         Log.info("&lk|&fr");
@@ -178,7 +178,7 @@ public class ClajControl extends arc.util.CommandHandler {
     
     register("say", "<room|all> <text...>", "Send a message to a room or all rooms.", args -> {
       if (args[0].equals("all")) {
-        server.rooms.forEach(e -> e.value.message(args[1]));
+        server.rooms.values().forEach(r -> r.message(args[1]));
         Log.info("Message sent to all rooms.");
         return;
       }

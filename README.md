@@ -47,8 +47,4 @@ CLaJ is a system like [Hamachi](https://vpn.net/), that allows you to create a r
 
 The only differences are that Hamachi requires account creation and therefore the collection of personal information, etc., while CLaJ does not. And CLaJ is directly integrated into Mindustry and optimized for it, which makes it easier to use compared to Hamachi, which needs to stay in parallel of the game.
 
-
-## Known issues
-* make a system to remove the claj server from the dosBlacklist, because if a client send too many packets, the host will adds the server address to the list. Because for him, it's only n connections from the same address (the claj server). And same for all clients.
-* The playerLimit doesn't count player connected via CLaJ. <br>
-In fact, the host player's server never receives the packets from peoples connected via CLaJ, the job is done by the CLaJ Proxy which simply runs the host player's server callbacks.
+On the host player's side, their server never receives packets from people connected via CLaJ, the work is done by the CLaJ Proxy which simply executes the server's callbacks.

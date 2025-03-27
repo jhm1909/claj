@@ -1,6 +1,7 @@
 package com.xpdustry.claj.server;
 
 import arc.util.Log;
+import arc.util.serialization.Base64Coder;
 
 import java.util.Scanner;
 
@@ -11,12 +12,16 @@ public class ClajControl extends arc.util.CommandHandler {
   public ClajControl(ClajRelay server) {
     super("");
     registerCommands(server);
-
+    
     arc.util.Threads.daemon("Server Control", () -> {
       try (Scanner scanner = new Scanner(System.in)) {
         while (scanner.hasNext()) handleCommand(scanner.nextLine());
       }
     });
+    
+    // Why the JVM throwing me a NoClassDefFoundError when i stop the server, if i remove that?
+    ResponseType.values();
+    new CommandResponse(null, null, null);
   }
 
   public void handleCommand(String line){
@@ -56,6 +61,24 @@ public class ClajControl extends arc.util.CommandHandler {
       Log.info("Shutting down CLaJ server.");
       server.stop();
     });
+    
+    register("debug", "[on|off]", "Enable/Disable the debug log level.", args -> {
+      if (args.length == 0) Log.info("Debug log level is @.", ClajConfig.debug ? "enabled" : "disabled");
+      
+      else if (Strings.isFalse(args[0])) {
+        Log.level = Log.LogLevel.info;
+        ClajConfig.debug = false;
+        ClajConfig.save();
+        Log.info("Debug log level disabled.");
+        
+      } else if (Strings.isTrue(args[0])) {
+        Log.level = Log.LogLevel.debug;
+        ClajConfig.debug = true;
+        ClajConfig.save();
+        Log.info("Debug log level enabled.");
+        
+      } else Log.err("Invalid argument.");
+    });
 
     register("rooms", "Displays created rooms.", args -> {
       if (server.rooms.isEmpty()) {
@@ -70,6 +93,7 @@ public class ClajControl extends arc.util.CommandHandler {
         r.value.clients.forEach(e -> 
           Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
         );
+        Log.info("&lk|&fr");
       });
     });
 
@@ -116,16 +140,73 @@ public class ClajControl extends arc.util.CommandHandler {
       } else Log.err("Invalid argument. Must be 'add' or 'del'.");
     });
 
-    register("warn-deprecated", "Warn the client if their CLaJ version is obsolete.", args -> {
-      ClajConfig.warnDeprecated = !ClajConfig.warnDeprecated;
-      Log.info("Warn message when a client using an obsolete CLaJ version @.", 
-               ClajConfig.warnDeprecated ? "enabled" : "disabled");
+    register("warn-deprecated", "[on|off]", "Warn the client if their CLaJ version is obsolete.", args -> {
+      if (args.length == 0) 
+        Log.info("Warn message when a client using an obsolete CLaJ version: @.", 
+                 ClajConfig.warnDeprecated ? "enabled" : "disabled");
+
+      else if (Strings.isFalse(args[0])) {
+        ClajConfig.warnDeprecated = false;
+        ClajConfig.save();
+        Log.info("Warn message disabled.");
+        
+      } else if (Strings.isTrue(args[0])) {
+        ClajConfig.warnDeprecated = true;
+        ClajConfig.save();
+        Log.info("Warn message enabled.");
+        
+      } else Log.err("Invalid argument.");
     });
     
-    register("warn-closing", "Warn all clients when the server is closing.", args -> {
-      ClajConfig.warnClosing = !ClajConfig.warnClosing;
-      Log.info("Warn message when closing the server @.", ClajConfig.warnClosing ? "enabled" : "disabled");
+    register("warn-closing", "[on|off]", "Warn all clients when the server is closing.", args -> {
+      if (args.length == 0) 
+        Log.info("Warn message when closing the server: @.", 
+                 ClajConfig.warnClosing ? "enabled" : "disabled");
+
+      else if (Strings.isFalse(args[0])) {
+        ClajConfig.warnClosing = false;
+        ClajConfig.save();
+        Log.info("Warn message disabled.");
+        
+      } else if (Strings.isTrue(args[0])) {
+        ClajConfig.warnClosing = true;
+        ClajConfig.save();
+        Log.info("Warn message enabled.");
+        
+      } else Log.err("Invalid argument.");
     });
     
+    register("say", "<room|all> <text...>", "Send a message to a room or all rooms.", args -> {
+      if (args[0].equals("all")) {
+        server.rooms.forEach(e -> e.value.message(args[1]));
+        Log.info("Message sent to all rooms.");
+        return;
+      }
+      
+      ClajRoom room = getRoom(server, args[0]);
+      
+      if (room == null) Log.err("Room @ not found.", args[0]);
+      else {
+        room.message(args[1]);
+        Log.info("Message sent to room @.", args[0]);
+      }
+    });
+  }
+  
+  
+  private static ClajRoom getRoom(ClajRelay server, String roomId) {
+    try { return server.get(bytesToLong(Base64Coder.decode(roomId, Base64Coder.urlsafeMap))); } 
+    catch (Exception ignored) { return null; }
+  }
+  
+  /** Copy of {@link com.xpdustry.claj.client.ClajLink#bytesToLong(byte[])} */
+  private static long bytesToLong(final byte[] b) {
+    if (b.length != Long.BYTES) throw new IndexOutOfBoundsException("must be " + Long.BYTES + " bytes");
+    long result = 0;
+    for (int i=0; i<Long.BYTES; i++) {
+        result <<= 8;
+        result |= (b[i] & 0xFF);
+    }
+    return result;
   }
 }

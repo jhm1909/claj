@@ -34,9 +34,7 @@ public class Main {
         text = Strings.format(text.replace("@", "&fb&lb@&fr"), arg);
         return useColors ? Log.addColors(text) : Log.removeColors(text);
       };  
-      // Sets log level to debug
-      Log.level = Log.LogLevel.debug;
-      
+
       // Parse server port
       if (args.length == 0) throw new RuntimeException("FATAL: Need a port as an argument!");
       int port = Integer.parseInt(args[0]);
@@ -44,13 +42,14 @@ public class Main {
       
       // Load settings and init server
       ClajConfig.load();
+      Log.level = ClajConfig.debug ? Log.LogLevel.debug : Log.LogLevel.info; // set log level
       relay = new ClajRelay();
       try { relay.bind(port, port); } 
       catch (java.io.IOException e) { throw new RuntimeException(e); }
       // Register commands
       control = new ClajControl(relay);
       
-      Log.info("Server hosted on port @. Type @ for help.", port, "'help'");    
+      Log.info("Server loaded and hosted on port @. Type @ for help.", port, "'help'");    
 
     } catch (Throwable t) {
       Log.err("Failed to load server", t);

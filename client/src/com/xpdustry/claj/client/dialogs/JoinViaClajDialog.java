@@ -17,12 +17,15 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
   public JoinViaClajDialog() {
     super("@claj.join.name");
 
+    cont.defaults().width(Vars.mobile ? 350f : 550f);
+    
+    
     cont.labelWrap("@claj.join.note").padBottom(10f).left().row();
     cont.table(table -> {
       table.add("@claj.join.link").padRight(5f).left();
-      table.field(lastLink, this::setLink).size(550f, 54f).maxTextLength(100).valid(this::setLink).row();
+      table.field(lastLink, this::setLink).maxTextLength(100).valid(this::setLink).height(54f).growX().row();
       table.add();
-      table.label(() -> output).width(550f).left().row();
+      table.labelWrap(() -> output).left().growX().row();
     }).row();
 
     buttons.defaults().size(140f, 60f).pad(4f);
@@ -31,10 +34,12 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
     
     //Adds the 'Join via CLaJ' button
     Table root = (Table)((Stack)Vars.ui.join.getChildren().get(1)).getChildren().get(1);
-    root.button("@claj.join.name", mindustry.gen.Icon.play, this::show);
+    root.button("@claj.join.name", mindustry.gen.Icon.play, this::show).row();
     // poor mobile players =<
     if (!Vars.steam && !Vars.mobile) root.getCells().insert(4, root.getCells().remove(6));
-    else root.getCells().insert(3, root.getCells().remove(4));
+    else {
+      root.getCells().insert(3, root.getCells().remove(4));
+    }
   }
 
   public void joinRoom() {

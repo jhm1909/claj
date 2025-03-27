@@ -6,7 +6,9 @@ import java.nio.ByteBuffer;
 import arc.func.Cons;
 import arc.net.Connection;
 import arc.net.DcReason;
-import arc.struct.Seq;
+import arc.net.NetListener;
+import arc.struct.IntMap;
+import arc.util.Ratekeeper;
 import arc.util.Reflect;
 import arc.util.io.ByteBufferInput;
 import arc.util.io.ByteBufferOutput;
@@ -15,31 +17,36 @@ import mindustry.Vars;
 import mindustry.gen.Call;
 
 
-public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
+public class ClajProxy extends arc.net.Client implements NetListener {
   public static int defaultTimeout = 5000; //ms
   
-  private final Seq<VirtualConnection> connections = new Seq<>();
+  private final IntMap<VirtualConnection> connections = new IntMap<>();
   private final arc.net.Server server;
-  private final arc.net.NetListener serverDispatcher;
+  private final NetListener serverDispatcher;
   private Cons<Long> roomCreated;
   private Runnable roomClosed;
   private long roomId = -1;
+  
+  /** No-op rate keeper, to avoid the player's server from life blacklisting the claj server . */
+  private Ratekeeper noopRate = new Ratekeeper() {
+    @Override
+    public boolean allow(long spacing, int cap) {
+      return true;
+    }
+  };
 
   public ClajProxy() {
-    super(8192, 16384, new Serializer());
+    super(32768, 16384, new Serializer());
     addListener(this);
     
     mindustry.net.Net.NetProvider provider = Reflect.get(Vars.net, "provider");
     if (Vars.steam) provider = Reflect.get(provider, "provider");
 
     server = Reflect.get(provider, "server");
+    //connections = Reflect.get(provider, "connections");
     serverDispatcher = Reflect.get(server, "dispatchListener");
   }
-  
-  public long roomId() {
-    return roomId;
-  }
-  
+
   /** This method must be used instead of others connect methods */
   public void connect(String host, int udpTcpPort, Cons<Long> roomCreatedCallback, 
                      Runnable roomClosedCallback) throws java.io.IOException {
@@ -48,27 +55,34 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
     connect(defaultTimeout, host, udpTcpPort, udpTcpPort);
   }
   
-  /** This method must be used instead if {@link #close(DcReason)} */
-  public void close() {
-    //TODO: verify that
+  // TODO: redefine #run() and #stop() to handle exceptions and restart update loop if needed
+  
+  public long roomId() {
+    return roomId;
+  }
+  
+  public void closeRoom() {
     sendTCP(new ClajPackets.RoomCloseRequestPacket());
-    super.close();
+    close();
   }
 
+  @Override
   public void connected(Connection connection) {
     // Request the room link
     sendTCP(new ClajPackets.RoomCreateRequestPacket());
   }
 
+  @Override
   public void disconnected(Connection connection, DcReason reason) {
     // We cannot communicate with the server anymore, so close all connections
-    connections.each(c -> c.closeFromProxy(reason));
+    connections.forEach(e -> e.value.closeFromProxy(reason));
     connections.clear();
     if (roomClosed != null) roomClosed.run();
+    roomId = -1;
   }
 
+  @Override
   public void received(Connection connection, Object object) {
-    // Only CLaJ Packets are allowed in the connection
     if (!(object instanceof ClajPackets.Packet)) return;
 
     else if (object instanceof ClajPackets.ClajMessagePacket) {
@@ -88,9 +102,10 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
       if (roomId == -1) return;
       
       int id = ((ClajPackets.ConnectionWrapperPacket)object).conID;
-      VirtualConnection con = connections.find(c -> c.id == id);
+      VirtualConnection con = connections.get(id);
       
       if (con == null) {
+        
         // Create a new connection
         if (object instanceof ClajPackets.ConnectionJoinPacket) {
           // Check if the link is the right
@@ -102,28 +117,29 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
             return;
           }
 
-          connections.add(con = new VirtualConnection(this, id));
-          serverDispatcher.connected(con);
-          // since the function to add a connection is private, we need to use reflection
-          //Reflect.invoke(server, "addConnection", new Object[] {con}, Connection.class);
-          // ^^^ Yeah no, we shouldn't add the connection, it will cause problems later
+          connections.put(id, con = new VirtualConnection(this, id));
+          con.notifyConnected0();
+          // Change the packet rate and chat rate to a no-op version
+          ((mindustry.net.NetConnection)con.getArbitraryData()).packetRate = noopRate;
+          ((mindustry.net.NetConnection)con.getArbitraryData()).chatRate = noopRate;
         }
-        
+
       } else if (object instanceof ClajPackets.ConnectionPacketWrapPacket) {
-        serverDispatcher.received(con, ((ClajPackets.ConnectionPacketWrapPacket)object).object);
-        
+        Object o = ((ClajPackets.ConnectionPacketWrapPacket)object).object;
+        con.notifyReceived0(o);
+
       } else if (object instanceof ClajPackets.ConnectionIdlingPacket) {
-        serverDispatcher.idle(con);
-        
+        con.notifyIdle0();
+
       } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
         con.closeFromProxy(((ClajPackets.ConnectionClosedPacket)object).reason);
-        connections.remove(con);
       }
     }
   }
 
   
   public static class Serializer extends mindustry.net.ArcNetProvider.PacketSerializer {
+    @Override
     public Object read(ByteBuffer buffer) {
       if (buffer.get() == ClajPackets.id) {
         ClajPackets.Packet p = ClajPackets.newPacket(buffer.get());
@@ -137,6 +153,7 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
       return super.read(buffer);
     }
     
+    @Override
     public void write(ByteBuffer buffer, Object object) {
       if (object instanceof ClajPackets.Packet) {
         ClajPackets.Packet p = (ClajPackets.Packet)object;
@@ -160,16 +177,21 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
      * so the proxy will notify the server to close the connection in turn,
      * or when the server notifies that the connection has been closed.
      */
-    volatile boolean isConnected;
+    volatile boolean isConnected = true;
     ClajProxy proxy;
+    /** The server will notify if the client is idling */
+    volatile boolean isIdling = false;
     
     public VirtualConnection(ClajProxy proxy, int id) {
       this.proxy = proxy;
       this.id = id;
+      addListener(proxy.serverDispatcher);
     }
  
+    @Override
     public int sendTCP(Object object) {
       if(object == null) throw new IllegalArgumentException("object cannot be null.");
+      isIdling = false;
 
       ClajPackets.ConnectionPacketWrapPacket p = new ClajPackets.ConnectionPacketWrapPacket();
       p.conID = id;
@@ -178,8 +200,10 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
       return proxy.sendTCP(p);
     }
 
+    @Override
     public int sendUDP(Object object) {
       if(object == null) throw new IllegalArgumentException("object cannot be null.");
+      isIdling = false;
 
       ClajPackets.ConnectionPacketWrapPacket p = new ClajPackets.ConnectionPacketWrapPacket();
       p.conID = id;
@@ -188,37 +212,86 @@ public class ClajProxy extends arc.net.Client implements arc.net.NetListener {
       return proxy.sendUDP(p);
     }
 
+    @Override
     public void close(DcReason reason) {
       boolean wasConnected = isConnected;
       isConnected = false;
+      isIdling = false;
       if(wasConnected) {
         ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
         p.conID = id;
         p.reason = reason;
         proxy.sendTCP(p);
-        proxy.serverDispatcher.disconnected(this, reason);
-        proxy.connections.remove(this);
+        proxy.connections.remove(id);
+        notifyDisconnected0(reason);
       }
     }
     
     public void closeFromProxy(DcReason reason) {
       boolean wasConnected = isConnected;
       isConnected = false;
+      isIdling = false;
       if(wasConnected) {
-        proxy.serverDispatcher.disconnected(this, reason);
-        //proxy.connections.remove(this);
+        proxy.connections.remove(id);
+        notifyDisconnected0(reason);
       }
     }
   
+    @Override
     public int getID() { return id; }
+    @Override
     public boolean isConnected() { return isConnected; }
+    @Override
     public void setKeepAliveTCP(int keepAliveMillis) {}
+    @Override
     public void setTimeout(int timeoutMillis) {}
+    @Override
     public InetSocketAddress getRemoteAddressTCP() { return proxy.getRemoteAddressTCP(); }
+    @Override
     public InetSocketAddress getRemoteAddressUDP() { return proxy.getRemoteAddressUDP(); }
+    @Override
     public int getTcpWriteBufferSize() { return 0; } // never used
-    public boolean isIdle() { return false; } // the server will notify if the client is idling
+    @Override
+    public boolean isIdle() { return isIdling; }
+    @Override
     public void setIdleThreshold(float idleThreshold) {} // never used
+    @Override
     public String toString() { return "Connection " + id; }
+    
+    public void notifyConnected0() {
+      for(NetListener listener : getListeners())
+        listener.connected(this);
+    }
+  
+    public void notifyDisconnected0(DcReason reason) {
+      for(NetListener listener : getListeners())
+        listener.disconnected(this, reason);
+    }
+  
+    public void notifyIdle0() {
+      isIdling = true;
+      for(NetListener listener : getListeners()) {
+        listener.idle(this);
+        if(!isIdle()) break;
+      }
+    }
+    
+    public void notifyReceived0(Object object) {
+      for(NetListener listener : getListeners())
+        listener.received(this, object);
+    }
+    
+    private java.lang.reflect.Field listenersField;
+    
+    NetListener[] getListeners() {
+      try {
+        if (listenersField == null) {
+          listenersField = Connection.class.getDeclaredField("listeners");
+          listenersField.setAccessible(true);
+        }
+        return (NetListener[])listenersField.get(this);
+        
+      } catch (Exception e) { throw new RuntimeException(e); }
+    }
   }
 }

@@ -1,11 +1,10 @@
 name: claj
-displayName: "CLaJ v2[lightgray] - Copy Link and Join"
+displayName: "CLaJ v2"
 author: "ZetaMap, xzxADIxzx"
 main: com.xpdustry.claj.client.Main
-description": "CLaJ (Copy Link and Join) allow you to play with your friends just by creating a room, copy the link and send it to your friends."
+description: "CLaJ (Copy Link and Join) allow you to play with your friends just by creating a room, copy the link and send it to your friends."
 version: "2.0"
-minGameVersion": 146
+minGameVersion: "146"
 java: true
 hidden: true
 repo: xpdustry/claj-v2
-  

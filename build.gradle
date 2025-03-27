@@ -22,18 +22,26 @@ allprojects {
     maven { url "https://maven.xpdustry.com/mindustry" }//anukeXpdustry()
     maven { url "https://www.jitpack.io" }//anukeJitpack()
   }
+  
+  dependencies {
+    // I realy want to use it....
+    //compileOnly "com.github.bsideup:jabel:1.0.1"
+    //annotationProcessor "com.github.bsideup:jabel:1.0.1"
+  }
 
   tasks.withType(JavaCompile) {
     targetCompatibility = JavaVersion.VERSION_1_8
-    sourceCompatibility = JavaVersion.VERSION_1_8
+    sourceCompatibility = JavaVersion.VERSION_1_8 //JavaVersion.VERSION_17
     options.encoding = "UTF-8"
+    
+    //options.compilerArgs.addAll(['--release', '8'])
   }
 }
 
 project(":client") {
   apply plugin: "java"
   apply plugin: "com.xpdustry.toxopid"
-  
+
   sourceSets.main.java.srcDirs = ["src"]
   sourceSets.main.resources.srcDirs = ["resources"]
   
@@ -43,22 +51,28 @@ project(":client") {
 	  compileOnly toxopid.dependencies.arcCore
     compileOnly toxopid.dependencies.mindustryCore
 	}
-	
-	jar {
+
+  mergeJar {
     archiveFileName = "${metadata.name}-client.jar"
-	 
-	  //copy the builded jar to the working directory
-    doLast {
-      copy {
-        from jar
-        into rootDir
-      }
-    }
-	
+   
+    // Includes mod descriptor
     from(rootDir) {
       include "mod.hjson"
     }
-	}
+    
+    //copy the builded jar to the working directory
+    doLast {
+      copy {
+        from mergeJar
+        into rootDir
+      }
+    }
+  }
+	
+	// Includes android dex
+  build {
+    dependsOn mergeJar
+  }
 }
 
 project(":server") {

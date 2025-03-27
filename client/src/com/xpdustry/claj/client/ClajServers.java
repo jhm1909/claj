@@ -16,7 +16,7 @@ public class ClajServers {
     online.clear();
     // Public list
     Http.get(publicServersLink)
-        .error(error -> mindustry.Vars.ui.showErrorMessage("@claj.servers.fetch-failed" + error.getLocalizedMessage()))
+        .error(error -> mindustry.Vars.ui.showException("@claj.servers.fetch-failed", error))
         .block(result -> Jval.read(result.getResultAsString())
                              .asObject()
                              .forEach(e -> online.put(e.key, e.value.asString()))

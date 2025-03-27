@@ -14,6 +14,7 @@ import arc.net.Server;
 import arc.struct.LongMap;
 import arc.util.Log;
 import arc.util.Ratekeeper;
+import arc.util.Threads;
 import arc.util.io.ByteBufferInput;
 import arc.util.io.ByteBufferOutput;
 
@@ -33,21 +34,29 @@ public class ClajRelay extends Server implements NetListener {
       
       try {
         // Notify all rooms that the server will be closed
-        for (LongMap.Entry<ClajRoom> e : rooms) 
-          e.value.message("The server is shutting down, please wait a minute or choose another server.");
-        // Give time to message to be send to all clients
-        Thread.sleep(2000);     
+        rooms.forEach(e -> 
+          e.value.message("The server is shutting down, please wait a minute or choose another server."));
+        
+        // Yea we needs a new thread... because we don't have the arc.Timer
+        Threads.daemon(() -> {
+          // Give time to message to be send to all clients
+          try { Thread.sleep(2000); }
+          catch (InterruptedException ignored) {}
+          closeRooms();
+          super.stop();
+        });
+        return;
       } catch (Throwable ignored) {}
     }
 
-    // Close rooms
-    try { 
-      for (LongMap.Entry<ClajRoom> e : rooms) 
-        e.value.close();  
-    } catch (Throwable ignored) {}
-    rooms.clear();
-    // Close server
+    closeRooms();
     super.stop();
+  }
+  
+  public void closeRooms() {
+    try { rooms.forEach(e -> e.value.close()); } 
+    catch (Throwable ignored) {}
+    rooms.clear();
   }
   
   @Override
@@ -91,31 +100,37 @@ public class ClajRelay extends Server implements NetListener {
       rate.occurences = -ClajConfig.spamLimit; // reset to prevent message spam
       
       if (room != null && room.host == connection) {
-        // hosts can spam packets when killing core and etc.
+        // all packets go to the host connection, so packet spam can happen quickly
+        // TODO: probably better to ignore completely the rate limit
         Log.warn("Connection @ not disconnected for packets spamming, because it's a room host.", 
                  Strings.conIDToString(connection));
+        // continue to process room host packets
+        
+      } else {
+        Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
+        if (room != null) {
+          room.message("A client has been kicked for packets spamming.");
+          room.disconnected(connection, DcReason.closed);
+        }
+        connection.close(DcReason.closed);   
         return;
       }
-       
-      Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
-      if (room != null) {
-        room.message("A client has been kicked for packets spamming.");
-        room.disconnected(connection, DcReason.closed);
-      }
-      connection.close(DcReason.closed);
-
-    } else if (object instanceof String) {
-      // Compatibility for the xzxADIxzx's version
-      if (ClajConfig.warnDeprecated) {
-        connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! "
-                         + "Please update it by removing the 'scheme size' mod and installing the 'claj v2' mod, "
-                         + "in the mod browser.");
-        connection.close(DcReason.error);
-      }
+    } 
+    
+    // Compatibility for the xzxADIxzx's version
+    if (ClajConfig.warnDeprecated && (object instanceof String)) {
+      Log.info("Rejecting connection @ because it's client version is obsolete.", Strings.conIDToString(connection));
+      connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
+                       + "removing the 'scheme size' mod and installing the 'claj v2' mod, in the mod browser.");
+      connection.close(DcReason.error);
       
     } else if (object instanceof ClajPackets.RoomJoinPacket) {
       // Disconnect from a potential another room.
-      if (room != null) room.disconnected(connection, DcReason.closed);
+      if (room != null) {
+        // Ignore if it's the host of another room
+        if (room.host == connection) return;
+        room.disconnected(connection, DcReason.closed);
+      }
       
       long roomId = ((ClajPackets.RoomJoinPacket)object).roomId;
       room = get(roomId);
@@ -135,7 +150,7 @@ public class ClajRelay extends Server implements NetListener {
       Log.info("Room @ created by connection @.", room.idToString(), Strings.conIDToString(connection));
       
     } else if (object instanceof ClajPackets.RoomCloseRequestPacket) {
-      // Ignore if not in a room or not the host
+      // Only room host can close the room
       if (room == null || room.host != connection) return;
       
       room.close();
@@ -192,7 +207,30 @@ public class ClajRelay extends Server implements NetListener {
 
   
   public static class Serializer implements NetSerializer {
+    /** Since there are only one thread using the serializer, it's not necessary to use a thread-local variable. */
     public ByteBuffer last = ByteBuffer.allocate(8192);
+    
+    @Override
+    public Object read(ByteBuffer buffer) {
+      byte id = buffer.get();
+
+      if (id == -2/*framework id*/) return readFramework(buffer);
+      if (ClajConfig.warnDeprecated && id == -3/*old claj version*/) {
+        try { return new ByteBufferInput(buffer).readUTF(); }
+        catch (Exception e) { throw new RuntimeException(e); }
+      }
+      if (id == ClajPackets.id) {
+        ClajPackets.Packet packet = ClajPackets.newPacket(buffer.get());
+        packet.read(new ByteBufferInput(buffer));
+        if (packet instanceof ClajPackets.ConnectionPacketWrapPacket) 
+          ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer =
+            last.clear().put(buffer).flip();
+        return packet;
+      }
+
+      // Non-claj packets are saved as raw buffer, to avoid re-serialization
+      return last.clear().put(buffer.position(buffer.position()-1)).flip();
+    }
     
     @Override
     public void write(ByteBuffer buffer, Object object) {
@@ -207,35 +245,14 @@ public class ClajRelay extends Server implements NetListener {
         ClajPackets.Packet packet = (ClajPackets.Packet)object;
         buffer.put(ClajPackets.id).put(ClajPackets.getId(packet));
         packet.write(new ByteBufferOutput(buffer));
-        
+        if (packet instanceof ClajPackets.ConnectionPacketWrapPacket)
+          buffer.put(((ClajPackets.ConnectionPacketWrapPacket)packet).buffer);
+
       } else if (ClajConfig.warnDeprecated && (object instanceof String)) {
         buffer.put((byte)-3/*old claj version*/);
         try { new ByteBufferOutput(buffer).writeUTF((String)object); }
         catch (Exception e) { throw new RuntimeException(e); }
       }
-    }
-
-    @Override
-    public Object read(ByteBuffer buffer) {
-      byte id = buffer.get();
-
-      if (id == -2/*framework id*/) return readFramework(buffer);
-      if (ClajConfig.warnDeprecated && id == -3/*old claj version*/) {
-        try { return new ByteBufferInput(buffer).readUTF(); }
-        catch (Exception e) { throw new RuntimeException(e); }
-      }
-      if (id == ClajPackets.id) {
-        ClajPackets.Packet packet = ClajPackets.newPacket(id);
-        packet.read(new ByteBufferInput(buffer));
-        return packet;
-      }
-
-      // Non-claj packets are saved as raw buffer, to avoid re-serialization
-      last.clear();
-      last.put(buffer.position(buffer.position()-1));
-      last.limit(buffer.limit() - buffer.position());
-
-      return last.position(0);
     }
 
     public void writeFramework(ByteBuffer buffer, FrameworkMessage message) {

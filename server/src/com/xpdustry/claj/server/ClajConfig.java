@@ -10,6 +10,8 @@ public class ClajConfig {
   
   protected static JsonSettings settings;
   
+  /** Debug log level enabled or not */
+  public static boolean debug = true;
   /** Limit for packet count sent within 3 sec that will lead to a disconnect. Note: only for clients, not hosts. */
   public static int spamLimit = 500;
   /** Warn a client that trying to create a room, that it's CLaJ version is deprecated. */
@@ -28,6 +30,7 @@ public class ClajConfig {
     settings.load();
     
     // Load values
+    debug = settings.getBool("debug", debug);
     spamLimit = settings.getInt("spam-limit", spamLimit);
     warnDeprecated = settings.getBool("warn-deprecated", warnDeprecated);
     warnClosing = settings.getBool("warn-closing", warnClosing);
@@ -35,10 +38,11 @@ public class ClajConfig {
     
     // Will create the file of not existing yet, 
     // but also to avoid a NoClassDefFoundError when stopping the server.
-    settings.save(); 
+    save(); 
   }
 
   public static void save() {
+    settings.put("debug", debug);
     settings.put("spam-limit", spamLimit);
     settings.put("warn-deprecated", warnDeprecated);
     settings.put("warn-closing", warnClosing);

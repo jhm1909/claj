@@ -72,6 +72,9 @@ public class ClajPackets {
   public static class ConnectionPacketWrapPacket extends ConnectionWrapperPacket {
     /** serialization will be done by the proxy */
     public Object object;
+    /** only for server usage */
+    public java.nio.ByteBuffer buffer;
+    
     public boolean isTCP;
     
     public void read0(ByteBufferInput read) {

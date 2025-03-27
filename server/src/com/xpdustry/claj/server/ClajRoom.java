@@ -1,5 +1,7 @@
 package com.xpdustry.claj.server;
 
+import java.nio.ByteBuffer;
+
 import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.NetListener;
@@ -82,22 +84,28 @@ public class ClajRoom implements NetListener {
       
       if (con != null) {
         boolean tcp = ((ClajPackets.ConnectionPacketWrapPacket)object).isTCP;
-        Object o = ((ClajPackets.ConnectionPacketWrapPacket)object).object;
+        Object o = ((ClajPackets.ConnectionPacketWrapPacket)object).buffer;
         
         if (tcp) con.sendTCP(o);
         else con.sendUDP(o);
 
       } else { // Notify that this connection doesn't exist, this case normally never happen
-        ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
+        //TODO: verify that
+        /*ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
         p.conID = conID;
         p.reason = DcReason.error;
-        host.sendTCP(p);
+        host.sendTCP(p);*/
       }
       
-    } else {
+    } else if (host.isConnected()) {
+      // Only raw buffers are allowed here.
+      // We never send claj packets to anyone other than the room host, framework packets are ignored
+      // and mindustry packets are saved as raw buffer.
+      if (!(object instanceof ByteBuffer)) return;
+      
       ClajPackets.ConnectionPacketWrapPacket p = new ClajPackets.ConnectionPacketWrapPacket();
       p.conID = connection.getID();
-      p.object = object;
+      p.buffer = (ByteBuffer)object;
       
       host.sendTCP(p);
     }
@@ -110,7 +118,7 @@ public class ClajRoom implements NetListener {
     if (connection == host) {
       // Ignore if this is the room host
       
-    } else {
+    } else if (host.isConnected()) {
       ClajPackets.ConnectionIdlingPacket p = new ClajPackets.ConnectionIdlingPacket();
       p.conID = connection.getID();
       host.sendTCP(p);
@@ -135,8 +143,7 @@ public class ClajRoom implements NetListener {
     
     host.close(DcReason.closed);
     synchronized (clients) {
-      for (IntMap.Entry<Connection> e : clients)
-        e.value.close(DcReason.closed);
+      clients.forEach(e -> e.value.close(DcReason.closed));
       clients.clear();  
     }
     

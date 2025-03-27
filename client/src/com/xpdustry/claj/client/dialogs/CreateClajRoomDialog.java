@@ -45,8 +45,11 @@ public class CreateClajRoomDialog extends BaseDialog {
     buttons.button("@claj.manage.copy", Icon.copy, this::copyLink).disabled(b -> link == null);
     
     shown(() -> {
-      refreshCustom();
-      refreshOnline();
+      // Just to give time to this dialog to open
+      arc.util.Time.run(7f, () -> {
+        refreshCustom();
+        refreshOnline();  
+      });
     });
 
     // Add custom server dialog
@@ -54,6 +57,7 @@ public class CreateClajRoomDialog extends BaseDialog {
     String[] last = {"", ""};
     TextField[] field = {null, null};
     add = new BaseDialog("@joingame.title");
+    add.buttons.defaults().size(140f, 60f).pad(4f);
     add.cont.table(table -> {
       table.add("@claj.manage.server-name").padRight(5f).right();
       field[0] = table.field(last[0], text -> last[0] = text).size(320f, 54f).maxTextLength(100).left().get();
@@ -61,9 +65,8 @@ public class CreateClajRoomDialog extends BaseDialog {
       field[1] = table.field(last[1], tmp::set).size(320f, 54f).valid(t -> tmp.set(last[1] = t))
                       .maxTextLength(100).left().get();
       table.row().add();
-      table.label(() -> tmp.error).width(550f).left().row();
-    }).center().row();
-    add.buttons.defaults().size(140f, 60f).pad(4f);
+      table.label(() -> tmp.error).width(320f).left().row();
+    }).row();
     add.buttons.button("@cancel", () -> {
       if (renaming != null) {
         renaming = null;
@@ -98,30 +101,30 @@ public class CreateClajRoomDialog extends BaseDialog {
 
     cont.pane(hosts -> {
       //CLaJ description
-      hosts.labelWrap("@claj.manage.tip").labelAlign(2, 8).padBottom(24f).width(Vars.mobile ? 550f : 850f).row();
+      hosts.labelWrap("@claj.manage.tip").labelAlign(2, 8).padBottom(24f).growX().row();
       
       // Custom servers
       hosts.table(table -> {
-        table.add("@claj.manage.custom-servers").pad(10).growX().left().color(Pal.accent);
+        table.add("@claj.manage.custom-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
         table.button(Icon.add, Styles.emptyi, add::show).size(40f).right().padRight(3);
         table.button(Icon.refresh, Styles.emptyi, this::refreshCustom).size(40f).right().padRight(3);
         table.button(Icon.downOpen, Styles.emptyi, () -> customShown = !customShown)
             .update(i -> i.getStyle().imageUp = !customShown ? Icon.upOpen : Icon.downOpen)
-            .size(40f).right().padRight(10f);
+            .size(40f).right();
       }).growX().row();
-      hosts.image().growX().pad(5).padLeft(10).padRight(10).height(3).color(Pal.accent).row();
+      hosts.image().growX().padTop(5).padBottom(5).height(3).color(Pal.accent).row();
       hosts.collapser(table -> custom = table, false, () -> customShown).growX().padBottom(10);
       hosts.row();
       
       // Online Public servers
       hosts.table(table -> {
-        table.add("@claj.manage.custom-servers").pad(10).growX().left().color(Pal.accent);
+        table.add("@claj.manage.custom-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
         table.button(Icon.refresh, Styles.emptyi, this::refreshOnline).size(40f).right().padRight(3);
         table.button(Icon.downOpen, Styles.emptyi, () -> onlineShown = !onlineShown)
             .update(i -> i.getStyle().imageUp = !onlineShown ? Icon.upOpen : Icon.downOpen)
-            .size(40f).right().padRight(10f);
+            .size(40f).right();
       }).growX().row();
-      hosts.image().growX().pad(5).padLeft(10).padRight(10).height(3).color(Pal.accent).row();
+      hosts.image().growX().padTop(5).padBottom(5).height(3).color(Pal.accent).row();
       hosts.collapser(table -> online = table, false, () -> onlineShown).growX().padBottom(10);
       hosts.row();
     }).marginBottom(70f).get().setScrollingDisabled(true, false);
@@ -130,14 +133,12 @@ public class CreateClajRoomDialog extends BaseDialog {
     Vars.ui.paused.shown(() -> {
       Table root = Vars.ui.paused.cont;
 
-      if (Vars.mobile) {
-        root.row().buttonRow("@claj.manage.name", Icon.planet, this::show).colspan(3)
-            .disabled(button -> !Vars.net.server());//.tooltip("@claj.manage.tip");
-        return;
-      }
-
-      root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
-          .disabled(button -> !Vars.net.server()).row();//.tooltip("@claj.manage.tip").row();
+      if (Vars.mobile) 
+        root.row().buttonRow("@claj.manage.name", Icon.planet, this::show)//.colspan(3)
+                  .disabled(button -> !Vars.net.server());
+      else
+        root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
+                  .disabled(button -> !Vars.net.server()).row();
 
       @SuppressWarnings("rawtypes")
       arc.struct.Seq<Cell> buttons = root.getCells();
@@ -174,7 +175,7 @@ public class CreateClajRoomDialog extends BaseDialog {
         selected = server;
         bselected = button;
       });
-      table.add(button).checked(b -> bselected == b).growX().pad(4).row();
+      table.add(button).checked(b -> bselected == b).growX().padTop(5).padBottom(5).row();
       
       Stack stack = new Stack();
       Table inner = new Table();
@@ -186,7 +187,10 @@ public class CreateClajRoomDialog extends BaseDialog {
       Table ping = inner.table(t -> {}).margin(0).pad(0).left().fillX().get();
       inner.add().expandX();
       Table label = new Table().center();
-      label.add(servers.getKeyAt(i) + " [lightgray](" + servers.getValueAt(i) + ')').pad(5).expandX();
+      if (Vars.mobile) {
+        label.add(servers.getKeyAt(i)).pad(5, 5, 0, 5).expandX().row();
+        label.add(" [lightgray](" + servers.getValueAt(i) + ')').pad(5, 0, 5, 5).expandX();
+      } else label.add(servers.getKeyAt(i) + " [lightgray](" + servers.getValueAt(i) + ')') .pad(5).expandX();
       
       stack.add(inner);
       stack.add(label);
@@ -197,7 +201,7 @@ public class CreateClajRoomDialog extends BaseDialog {
           renaming = server;
           renamingOldKey = i0;
           add.show();
-        }).pad(2).right();
+        }).pad(4).right();
         
         inner.button(Icon.trashSmall, Styles.emptyi, () -> {
           ui.showConfirm("@confirm", "@server.delete", () -> {

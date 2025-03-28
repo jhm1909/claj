@@ -2,6 +2,7 @@ package com.xpdustry.claj.client;
 
 import arc.Core;
 import arc.struct.ArrayMap;
+import arc.struct.ObjectMap;
 import arc.util.Http;
 import arc.util.serialization.Jval;
 
@@ -12,15 +13,15 @@ public class ClajServers {
   public static final ArrayMap<String, String> online = new ArrayMap<>(),
                                                custom = new ArrayMap<>();
   
-  public static synchronized void refreshOnline() {
-    online.clear();
+  public static synchronized void refreshOnline(Runnable done, arc.func.Cons<Throwable> failed) {
     // Public list
-    Http.get(publicServersLink)
-        .error(error -> mindustry.Vars.ui.showException("@claj.servers.fetch-failed", error))
-        .block(result -> Jval.read(result.getResultAsString())
-                             .asObject()
-                             .forEach(e -> online.put(e.key, e.value.asString()))
-    );
+    Http.get(publicServersLink, result -> {
+      Jval.JsonMap list = Jval.read(result.getResultAsString()).asObject();
+      online.clear();
+      for (ObjectMap.Entry<String, Jval> e : list)
+        online.put(e.key, e.value.asString());
+      done.run();
+    }, failed);
     //online.put("Chaotic Neutral", "n3.xpdustry.com:7025");
   }
   

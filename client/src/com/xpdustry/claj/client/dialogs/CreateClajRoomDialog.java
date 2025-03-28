@@ -30,7 +30,7 @@ public class CreateClajRoomDialog extends BaseDialog {
   Button bselected;
   Dialog add;
   Table custom, online;
-  boolean customShown = true, onlineShown = true;
+  boolean customShown = true, onlineShown = true, refreshingOnline;
 
   public CreateClajRoomDialog() {
     super("@claj.manage.name");
@@ -159,8 +159,15 @@ public class CreateClajRoomDialog extends BaseDialog {
   }
   
   void refreshOnline() {
-    ClajServers.refreshOnline(); 
-    setupServers(ClajServers.online, online, false, null);
+    if (refreshingOnline) return;
+    refreshingOnline = true;
+    ClajServers.refreshOnline(() -> {
+      refreshingOnline = false;
+      setupServers(ClajServers.online, online, false, null);
+    }, e -> {
+      refreshingOnline = false;
+      Vars.ui.showException("@claj.manage.fetch-failed", e);
+    }); 
   }
   
   void setupServers(arc.struct.ArrayMap<String, String> servers, Table table, boolean editable, Runnable deleted) {

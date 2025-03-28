@@ -144,7 +144,7 @@ public class CreateClajRoomDialog extends BaseDialog {
         
       // Makes a compatilibity for foo's client users, by
       // checking the hosting button, it's colspan is normally 2 on vanilla.
-      // Also there is no way to get this property, so we need reflection
+      // Also there is no way to get this property, so we need reflection.
       } else if (arc.util.Reflect.<Integer>get(buttons.get(buttons.size-2), "colspan") == 2) 
         root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
                   .disabled(button -> !Vars.net.server()).row();   

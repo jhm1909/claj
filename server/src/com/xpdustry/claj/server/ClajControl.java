@@ -86,7 +86,7 @@ public class ClajControl extends arc.util.CommandHandler {
         return;
       }
       
-      Log.info("Rooms:");
+      Log.info("Rooms: [total: @]", server.rooms.size);
       server.rooms.values().forEach(r -> {
         Log.info("&lk|&fr Room @:", r.idToString());
         Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.host), Strings.getIP(r.host));

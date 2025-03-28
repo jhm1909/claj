@@ -5,7 +5,7 @@ import com.xpdustry.toxopid.spec.ModPlatform
 
 plugins {
   id "java"
-  id "com.xpdustry.toxopid" version "4.1.0"
+  id "com.xpdustry.toxopid" version "4.1.2"
 }
 
 def metadata = ModMetadata.fromJson(file("mod.hjson"))
@@ -59,7 +59,7 @@ project(":client") {
     from(rootDir) {
       include "mod.hjson"
     }
-    
+
     //copy the builded jar to the working directory
     doLast {
       copy {
@@ -79,7 +79,6 @@ project(":server") {
   apply plugin: "java"
   apply plugin: "com.xpdustry.toxopid"
   
-
   sourceSets.main.java.srcDirs = ["src"]
   sourceSets.main.resources.srcDirs = ["resources"]
   
@@ -97,9 +96,7 @@ project(":server") {
     
     // Includes arc libs
     from {
-      configurations.runtimeClasspath.collect {
-        it.isDirectory() ? it : zipTree(it)
-      }
+      configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     
     //copy the builded jar to the working directory

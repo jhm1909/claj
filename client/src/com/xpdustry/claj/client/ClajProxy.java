@@ -105,10 +105,13 @@ public class ClajProxy extends Client implements NetListener {
   @Override
   public void disconnected(Connection connection, DcReason reason) {
     roomId = -1;
-    // We cannot communicate with the server anymore, so close all connections
-    connections.values().forEach(c -> c.closeFromProxy(reason));
-    connections.clear();
     if (roomClosed != null) roomClosed.run();
+    // We cannot communicate with the server anymore, so close all connections
+    // This throwing me an unresolved class error: Ljava/lang/Iterable$-CC;
+    //connections.values().forEach(c -> c.closeFromProxy(reason));
+    for (IntMap.Values<VirtualConnection> iter=connections.values(); iter.hasNext();)
+      iter.next().closeFromProxy(reason);
+    connections.clear();
   }
 
   @Override

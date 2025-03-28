@@ -32,7 +32,7 @@ public class JoinViaClajDialog extends mindustry.ui.dialogs.BaseDialog {
     //Adds the 'Join via CLaJ' button
     if (!Vars.steam && !Vars.mobile) {
       Vars.ui.join.buttons.button("@claj.join.name", mindustry.gen.Icon.play, this::show).row();
-      Vars.ui.join.buttons.getCells().swap(6, 4);//.insert(4, root.getCells().remove(6));
+      Vars.ui.join.buttons.getCells().swap(6, 4);
     } else {
       // adds in a new line for mobile players
       Vars.ui.join.buttons.row().add().growX().width(-1);

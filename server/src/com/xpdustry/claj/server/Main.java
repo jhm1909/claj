@@ -19,8 +19,13 @@ public class Main {
   
   public static void main(String[] args) {
     try {
-      // Ignore SocketException errors
-      ArcNet.errorHandler = e -> { if (!(Strings.getFinalCause(e) instanceof java.net.SocketException)) Log.err(e); };
+      // Ignore connection reset, closed and broken errors
+      ArcNet.errorHandler = e -> { 
+        if (Strings.getFinalCause(e) instanceof java.net.SocketException) return;
+        String m = e.getMessage().toLowerCase();
+        if (m.contains("reset") || m.contains("closed") || m.contains("broken pipe")) return;
+        Log.err(e); 
+      };
       Log.logger = (level, text) -> {
         for (String line : text.split("\n")) {
           //err has red text instead of reset.

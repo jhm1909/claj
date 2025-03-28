@@ -10,7 +10,6 @@ import arc.graphics.Color;
 import arc.scene.ui.Button;
 import arc.scene.ui.Dialog;
 import arc.scene.ui.TextField;
-import arc.scene.ui.layout.Cell;
 import arc.scene.ui.layout.Stack;
 import arc.scene.ui.layout.Table;
 import arc.util.Strings;
@@ -135,18 +134,29 @@ public class CreateClajRoomDialog extends BaseDialog {
     // Adds the 'Create a CLaJ room' button
     Vars.ui.paused.shown(() -> {
       Table root = Vars.ui.paused.cont;
+      @SuppressWarnings("rawtypes")
+      arc.struct.Seq<arc.scene.ui.layout.Cell> buttons = root.getCells();
 
-      if (Vars.mobile) 
+      if (Vars.mobile) {
         root.row().buttonRow("@claj.manage.name", Icon.planet, this::show)
                   .disabled(button -> !Vars.net.server()).row();
-      else
+        return;
+        
+      // Makes a compatilibity for foo's client users, by
+      // checking the hosting button, it's colspan is normally 2 on vanilla.
+      // Also there is no way to get this property, so we need reflection
+      } else if (arc.util.Reflect.<Integer>get(buttons.get(buttons.size-2), "colspan") == 2) 
         root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
-                  .disabled(button -> !Vars.net.server()).row();
-
-      @SuppressWarnings("rawtypes")
-      arc.struct.Seq<Cell> buttons = root.getCells();
+                  .disabled(button -> !Vars.net.server()).row();   
+      
+      // Probably the foo's client, use a normal button
+      else 
+        root.row().button("@claj.manage.name", Icon.planet, this::show)
+                  .disabled(button -> !Vars.net.server()).row(); 
+      
       // move the claj button above the quit button
-      buttons.swap(buttons.size-1, buttons.size-2); 
+      buttons.swap(buttons.size-1, buttons.size-2);     
+      
     });
   }
   

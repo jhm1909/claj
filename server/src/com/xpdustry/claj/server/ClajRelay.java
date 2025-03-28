@@ -23,7 +23,7 @@ public class ClajRelay extends Server implements NetListener {
   public final LongMap<ClajRoom> rooms = new LongMap<>();
 
   public ClajRelay() {
-    super(32768, 8192, new Serializer());
+    super(32768, 16384, new Serializer());
     addListener(this);
   }
 
@@ -95,30 +95,20 @@ public class ClajRelay extends Server implements NetListener {
     Ratekeeper rate = (Ratekeeper)connection.getArbitraryData();
     ClajRoom room = find(connection);
     
-    // Simple packet spam protection
-    if (ClajConfig.spamLimit > 0 && !rate.allow(3000L, ClajConfig.spamLimit)) {
+    // Simple packet spam protection, ignored for room hosts
+    if ((room == null || room.host != connection) && 
+        ClajConfig.spamLimit > 0 && !rate.allow(3000L, ClajConfig.spamLimit)) {
       rate.occurences = -ClajConfig.spamLimit; // reset to prevent message spam
       
-      if (room != null && room.host == connection) {
-        // all packets go to the host connection, so packet spam can happen quickly
-        // TODO: probably better to ignore completely the rate limit
-        Log.warn("Connection @ not disconnected for packets spamming, because it's a room host.", 
-                 Strings.conIDToString(connection));
-        // continue to process room host packets
-        
-      } else {
-        Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
-        if (room != null) {
-          room.message("A client has been kicked for packets spamming.");
-          room.disconnected(connection, DcReason.closed);
-        }
-        connection.close(DcReason.closed);   
-        return;
+      Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
+      if (room != null) {
+        room.message("A client has been kicked for packets spamming.");
+        room.disconnected(connection, DcReason.closed);
       }
-    } 
-    
+      connection.close(DcReason.closed);   
+      
     // Compatibility for the xzxADIxzx's version
-    if (ClajConfig.warnDeprecated && (object instanceof String)) {
+    } else if (ClajConfig.warnDeprecated && (object instanceof String)) {
       Log.info("Rejecting connection @ because it's client version is obsolete.", Strings.conIDToString(connection));
       connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
                        + "removing the 'scheme size' mod and installing the 'claj v2' mod, in the mod browser.");
@@ -208,7 +198,7 @@ public class ClajRelay extends Server implements NetListener {
   
   public static class Serializer implements NetSerializer {
     /** Since there are only one thread using the serializer, it's not necessary to use a thread-local variable. */
-    public ByteBuffer last = ByteBuffer.allocate(8192);
+    public ByteBuffer last = ByteBuffer.allocate(16384);
     
     @Override
     public Object read(ByteBuffer buffer) {

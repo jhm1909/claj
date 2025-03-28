@@ -97,7 +97,7 @@ public class ClajRoom implements NetListener {
         host.sendTCP(p);*/
       }
       
-    } else if (host.isConnected()) {
+    } else {
       // Only raw buffers are allowed here.
       // We never send claj packets to anyone other than the room host, framework packets are ignored
       // and mindustry packets are saved as raw buffer.
@@ -118,7 +118,7 @@ public class ClajRoom implements NetListener {
     if (connection == host) {
       // Ignore if this is the room host
       
-    } else if (host.isConnected()) {
+    } else {
       ClajPackets.ConnectionIdlingPacket p = new ClajPackets.ConnectionIdlingPacket();
       p.conID = connection.getID();
       host.sendTCP(p);

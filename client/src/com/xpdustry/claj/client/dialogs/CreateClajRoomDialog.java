@@ -119,7 +119,7 @@ public class CreateClajRoomDialog extends BaseDialog {
       
       // Online Public servers
       hosts.table(table -> {
-        table.add("@claj.manage.custom-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
+        table.add("@claj.manage.public-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
         table.button(Icon.refresh, Styles.emptyi, this::refreshOnline).size(40f).right().padRight(3);
         table.button(Icon.downOpen, Styles.emptyi, () -> onlineShown = !onlineShown)
             .update(i -> i.getStyle().imageUp = !onlineShown ? Icon.upOpen : Icon.downOpen)

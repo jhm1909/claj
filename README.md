@@ -10,10 +10,10 @@ This is a bundled, reworked and optimized version of the [CLaJ server](https://g
 
 ## How to use
 ### Client
-**First, if you don't have the mod yet, you can find it in the mod browser by searching for 'claj v2' and then installing it.**
+**First, if you don't have the mod yet, you can find it in the mod browser by searching for 'claj' and then installing it.**
 
-Start and host a map as normal (or your campaign): ``Host Multiplayer Game`` **>** ``Host``. <br>
-Then go to ``Create a CLaJ Room``, select a server (or add your own), after ``Create Room`` **>** ``Copy Link`` and send the copied link to your friends.
+Start and host a map as normal (or your campaign): ``Host multiplayer game`` **>** ``Host``. <br>
+Then go to ``Manage CLaJ room``, select a server (or add your own), after ``Create room``, wait for the room to be created, click ``Copy link`` and send the copied link to your friends.
 
 To join, it's simple, copy the link your friend sent you, open your game, go to ``Play`` **>** ``Join Game`` **>** ``Join via CLaJ``, paste the link and ``OK``. <br>
 Now, if all goods, you can play with your friends, so enjoy =).

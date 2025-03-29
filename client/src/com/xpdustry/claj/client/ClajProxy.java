@@ -92,7 +92,7 @@ public class ClajProxy extends Client implements NetListener {
   
   public void closeRoom() {
     roomId = -1;
-    sendTCP(new ClajPackets.RoomCloseRequestPacket());
+    if (isConnected()) sendTCP(new ClajPackets.RoomCloseRequestPacket());
     close();
   }
 
@@ -106,7 +106,7 @@ public class ClajProxy extends Client implements NetListener {
   public void disconnected(Connection connection, DcReason reason) {
     roomId = -1;
     if (roomClosed != null) roomClosed.run();
-    // We cannot communicate with the server anymore, so close all connections
+    // We cannot communicate with the server anymore, so close all virtual connections
     for (VirtualConnection c : connections.values())
       c.closeFromProxy(reason);
     connections.clear();
@@ -253,7 +253,7 @@ public class ClajProxy extends Client implements NetListener {
         p.conID = id;
         p.reason = reason;
         proxy.sendTCP(p);
-        proxy.connections.remove(id);
+
         notifyDisconnected0(reason);
       }
     }
@@ -262,10 +262,8 @@ public class ClajProxy extends Client implements NetListener {
       boolean wasConnected = isConnected;
       isConnected = false;
       isIdling = false;
-      if(wasConnected) {
-        proxy.connections.remove(id);
+      if(wasConnected) 
         notifyDisconnected0(reason);
-      }
     }
   
     @Override
@@ -295,6 +293,7 @@ public class ClajProxy extends Client implements NetListener {
     }
   
     public void notifyDisconnected0(DcReason reason) {
+      proxy.connections.remove(id);
       for(NetListener listener : getListeners())
         listener.disconnected(this, reason);
     }

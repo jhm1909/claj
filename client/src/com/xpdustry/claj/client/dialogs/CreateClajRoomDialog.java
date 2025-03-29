@@ -1,7 +1,5 @@
 package com.xpdustry.claj.client.dialogs;
 
-import static mindustry.Vars.ui;
-
 import com.xpdustry.claj.client.Claj;
 import com.xpdustry.claj.client.ClajLink;
 import com.xpdustry.claj.client.ClajServers;
@@ -14,6 +12,7 @@ import arc.scene.ui.layout.Stack;
 import arc.scene.ui.layout.Table;
 import arc.util.Strings;
 import arc.util.Time;
+import arc.util.Timer;
 
 import mindustry.Vars;
 import mindustry.gen.Icon;
@@ -225,9 +224,9 @@ public class CreateClajRoomDialog extends BaseDialog {
           }).size(30f).pad(2, 5, 2, 5).right();
           
           inner.button(Icon.trash, Styles.emptyi, () -> {
-            ui.showConfirm("@confirm", "@server.delete", () -> {
-                servers.removeKey(server.name);
-                if (deleted != null) deleted.run();
+            Vars.ui.showConfirm("@confirm", "@server.delete", () -> {
+              servers.removeKey(server.name);
+              if (deleted != null) deleted.run();
             });
           }).size(30f).pad(2, 5, 2, 5).right();
           
@@ -239,9 +238,9 @@ public class CreateClajRoomDialog extends BaseDialog {
           }).pad(4).right();
           
           inner.button(Icon.trashSmall, Styles.emptyi, () -> {
-            ui.showConfirm("@confirm", "@server.delete", () -> {
-                servers.removeKey(server.name);
-                if (deleted != null) deleted.run();
+            Vars.ui.showConfirm("@confirm", "@server.delete", () -> {
+              servers.removeKey(server.name);
+              if (deleted != null) deleted.run();
             });
           }).pad(2).right();
         }
@@ -267,7 +266,18 @@ public class CreateClajRoomDialog extends BaseDialog {
     
     Vars.ui.loadfrag.show("@claj.manage.creating-room");
     link = null;
-    Claj.createRoom(selected.ip, selected.port, l -> link = l, () -> {
+    // Disconnect the client if the room is not created until 7 seconds
+    Timer.Task t = Timer.schedule(Claj::closeRoom, 7);
+    Claj.createRoom(selected.ip, selected.port, l -> {
+      Vars.ui.loadfrag.hide();
+      t.cancel();
+      link = l;
+    }, e -> {
+      Vars.net.handleException(e);
+      t.cancel();
+    }, () -> {
+      Vars.ui.loadfrag.hide();
+      t.cancel();
       if (link == null) Vars.ui.showErrorMessage("@claj.manage.room-creation-failed");
       else link = null;
     });

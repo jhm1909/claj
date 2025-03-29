@@ -42,7 +42,8 @@ public class Claj {
   }
 
   /** @apiNote async operation */
-  public static void createRoom(String ip, int port, Cons<ClajLink> done, Runnable disconnected) {
+  public static void createRoom(String ip, int port, Cons<ClajLink> done, Cons<Throwable> failed, 
+                                Runnable disconnected) {
     if (room == null || roomThread == null || !roomThread.isAlive()) 
       roomThread = Threads.daemon("CLaJ Proxy", room = new ClajProxy());
     
@@ -50,8 +51,7 @@ public class Claj {
       try {
         if (room.isConnected()) throw new IllegalStateException("Room is already created, please close it before.");
         room.connect(ip, port, id -> done.get(new ClajLink(ip, port, id)), disconnected);
-      } catch (Throwable e) { Vars.net.handleException(e); }  
-      finally { Vars.ui.loadfrag.hide(); }
+      } catch (Throwable e) { failed.get(e); }  
     });
   }
   

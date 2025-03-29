@@ -58,6 +58,7 @@ project(":client") {
     // Includes mod descriptor
     from(rootDir) {
       include "mod.hjson"
+      include "icon.png"
     }
 
     //copy the builded jar to the working directory

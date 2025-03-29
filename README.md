@@ -20,9 +20,6 @@ Now, if all goods, you can play with your friends, so enjoy =).
 
 
 ### Server
-> [!NOTE]
-> The server version is not a plugin, it's a custom server.
-
 To host a server, just run the command ``java -jar claj-v2-server.jar <port>``, where ``<port>`` is the port for the server. <br>
 Also don't forget to open the port in TCP and UDP mode on your end-point and redirect it to the host machine.
 

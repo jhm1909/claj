@@ -6,7 +6,7 @@ import arc.util.serialization.Base64Coder;
 
 
 /**
- * CLaJ links are lins URIs and formatted like this: {@code claj://host:port/room-id} 
+ * CLaJ links (for this version) are URI, and formatted like that: {@code claj://host:port/room-id} 
  * or {@code host:port/room-id}.<br>
  * - {@code 'claj://'} is the protocol name (this part is optional). <br>
  * - {@code 'host'} is the host server. <br>

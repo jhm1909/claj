@@ -1,11 +1,11 @@
-# Copy Link and Join v2 (CLaJ v2)
+# Copy Link and Join (CLaJ)
 This system allow you to play with your friends just by creating a room, copy the link, send it to your friends. <br>
 In fact it's pretty much the same thing as Hamachi, but in a Mindustry mod.
 
 This is a bundled, reworked and optimized version of the [CLaJ server](https://github.com/xzxADIxzx/Copy-Link-and-Join) and the [xzxADIxzx's Scheme-Size mod](https://github.com/xzxADIxzx/Scheme-Size), with only the CLaJ feature.
 
 > [!IMPORTANT]
-> The CLaJ version 2 is not compatible with the older one. <br>
+> This CLaJ version is not compatible with the [xzxADIxzx's](https://github.com/xzxADIxzx) one. <br>
 > The protocol has been reworked and optimized, and CLaJ links have also been changed to a more standard version.
 
 ## How to use
@@ -20,23 +20,23 @@ Now, if all goods, you can play with your friends, so enjoy =).
 
 
 ### Server
-To host a server, just run the command ``java -jar claj-v2-server.jar <port>``, where ``<port>`` is the port for the server. <br>
+To host a server, just run the command ``java -jar claj-server.jar <port>``, where ``<port>`` is the port for the server. <br>
 Also don't forget to open the port in TCP and UDP mode on your end-point and redirect it to the host machine.
 
 A CLaJ server doesn't need much memory and cpu, 256MB of memory and one core are enough, even at high traffic.<br>
-To change the memory allocated to the server, change the command to ``java -Xms<memory> -Xmx<memory> -jar claj-v2-server.jar <port>``, where ``<memory>`` is the memory allocated to the server *(e.g. 256m for 256 MB of ram)*.
+To change the memory allocated to the server, change the command to ``java -Xms<memory> -Xmx<memory> -jar claj-server.jar <port>``, where ``<memory>`` is the memory allocated to the server *(e.g. 256m for 256 MB of ram)*.
 
 > [!IMPORTANT]
-> Please note that, if you plan to make a public server, you can create a Pull-Request to add it to the public server list, in [public-servers.json](https://github.com/xpdustry/claj-v2/blob/main/public-servers.json). <br><br>
+> Please note that, if you plan to make a public server, you can create a Pull-Request to add it to the public server list, in [public-servers.json](https://github.com/xpdustry/claj/blob/main/public-servers.json). <br><br>
 > Also, CLaJ servers are high bandwidth consumers, as they act as relay. For an average server, around 1TB up/down of consumption per month and around 1MB/s of constant network usage.
 
 
 ## How to build
-Pre-build releases can be found in the [releases section](https://github.com/Xpdustry/claj-v2/releases), but if you want to build the project yourself, follow the steps above.
+Pre-build releases can be found in the [releases section](https://github.com/Xpdustry/claj/releases), but if you want to build the project yourself, follow the steps above.
 
-To build the client version, simply run the command ``./gradlew client:build``. The jar file will be located in the root directory and named ``claj-v2-client.jar``.
+To build the client version, simply run the command ``./gradlew client:build``. The jar file will be located in the root directory and named ``claj-client.jar``.
 
-To build the server version, simply run the command ``./gradlew server:build``. The jar file will be located in the root directory and named ``claj-v2-server.jar``.
+To build the server version, simply run the command ``./gradlew server:build``. The jar file will be located in the root directory and named ``claj-server.jar``.
 
 
 ## How it works

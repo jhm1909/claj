@@ -1,5 +1,5 @@
-name: claj-v2
-displayName: "CLaJ v2"
+name: claj
+displayName: "CLaJ"
 subtitle: "\u26A0 Incompatible with 'Scheme Size'"
 author: "ZetaMap, xzxADIxzx"
 main: com.xpdustry.claj.client.Main
@@ -12,4 +12,4 @@ version: "2.1"
 minGameVersion: "146"
 java: true
 hidden: true
-repo: xpdustry/claj-v2
+repo: xpdustry/claj

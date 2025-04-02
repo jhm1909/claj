@@ -9,7 +9,7 @@ import arc.util.serialization.Jval;
 
 public class ClajServers {
   public static final String publicServersLink = 
-      "https://github.com/xpdustry/claj-v2/blob/main/public-servers.hjson?raw=true";
+      "https://github.com/xpdustry/clajw/blob/main/public-servers.hjson?raw=true";
   public static final ArrayMap<String, String> online = new ArrayMap<>(),
                                                custom = new ArrayMap<>();
   

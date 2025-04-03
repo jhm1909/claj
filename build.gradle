@@ -47,8 +47,8 @@ project(":client") {
   
   toxopid.platforms = [ModPlatform.DESKTOP, ModPlatform.ANDROID]
   
-	dependencies {
-	  compileOnly toxopid.dependencies.arcCore
+  dependencies {
+    compileOnly toxopid.dependencies.arcCore
     compileOnly toxopid.dependencies.mindustryCore
 	}
 

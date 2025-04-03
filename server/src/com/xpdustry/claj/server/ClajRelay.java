@@ -23,7 +23,8 @@ public class ClajRelay extends Server implements NetListener {
   public final LongMap<ClajRoom> rooms = new LongMap<>();
 
   public ClajRelay() {
-    super(32768, 16384, new Serializer());
+    // Idk why but sometimes a BufferOverflowException can occur, so double the write buffer size.
+    super(32768*2, 16384, new Serializer());
     addListener(this);
   }
 
@@ -108,7 +109,7 @@ public class ClajRelay extends Server implements NetListener {
       connection.close(DcReason.closed);   
       
     // Compatibility for the xzxADIxzx's version
-    } else if (ClajConfig.warnDeprecated && (object instanceof String)) {
+    } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
       Log.warn("Rejecting connection @ because it's client version is obsolete.", Strings.conIDToString(connection));
       connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
                        + "installing the 'claj' mod, in the mod browser.");
@@ -189,8 +190,8 @@ public class ClajRelay extends Server implements NetListener {
   }
   
   public ClajRoom find(Connection con) {
-    for (LongMap.Entry<ClajRoom> e : rooms) {
-      if (e.value.contains(con)) return e.value;
+    for (ClajRoom r : rooms.values()) {
+      if (r.contains(con)) return r;
     }
     return null;
   }
@@ -198,23 +199,22 @@ public class ClajRelay extends Server implements NetListener {
   
   public static class Serializer implements NetSerializer {
     /** Since there are only one thread using the serializer, it's not necessary to use a thread-local variable. */
-    public ByteBuffer last = ByteBuffer.allocate(16384);
+    private ByteBuffer last = ByteBuffer.allocate(16384);
     
     @Override
     public Object read(ByteBuffer buffer) {
       byte id = buffer.get();
 
       if (id == -2/*framework id*/) return readFramework(buffer);
-      if (ClajConfig.warnDeprecated && id == -3/*old claj version*/) {
+      if (id == -3/*old claj version*/ && ClajConfig.warnDeprecated) {
         try { return new ByteBufferInput(buffer).readUTF(); }
         catch (Exception e) { throw new RuntimeException(e); }
       }
       if (id == ClajPackets.id) {
         ClajPackets.Packet packet = ClajPackets.newPacket(buffer.get());
         packet.read(new ByteBufferInput(buffer));
-        if (packet instanceof ClajPackets.ConnectionPacketWrapPacket) 
-          ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer =
-            last.clear().put(buffer).flip();
+        if (packet instanceof ClajPackets.ConnectionPacketWrapPacket)
+          ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer = last.clear().put(buffer).flip();
         return packet;
       }
 
@@ -230,18 +230,18 @@ public class ClajRelay extends Server implements NetListener {
       } else if (object instanceof FrameworkMessage) {
         buffer.put((byte)-2); //framework id
         writeFramework(buffer, (FrameworkMessage)object);
-          
+        
+      } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
+        buffer.put((byte)-3/*old claj version*/);
+        try { new ByteBufferOutput(buffer).writeUTF((String)object); }
+        catch (Exception e) { throw new RuntimeException(e); }          
+        
       } else if (object instanceof ClajPackets.Packet) {
         ClajPackets.Packet packet = (ClajPackets.Packet)object;
         buffer.put(ClajPackets.id).put(ClajPackets.getId(packet));
         packet.write(new ByteBufferOutput(buffer));
         if (packet instanceof ClajPackets.ConnectionPacketWrapPacket)
           buffer.put(((ClajPackets.ConnectionPacketWrapPacket)packet).buffer);
-
-      } else if (ClajConfig.warnDeprecated && (object instanceof String)) {
-        buffer.put((byte)-3/*old claj version*/);
-        try { new ByteBufferOutput(buffer).writeUTF((String)object); }
-        catch (Exception e) { throw new RuntimeException(e); }
       }
     }
 

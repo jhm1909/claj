@@ -31,10 +31,8 @@ public class ClajRoom implements NetListener {
     p.conID = connection.getID();
     p.roomId = id;
     host.sendTCP(p);
-    
-    synchronized (clients) {
-      clients.put(connection.getID(), connection);
-    }
+
+    clients.put(connection.getID(), connection);
   }
 
   @Override
@@ -51,23 +49,15 @@ public class ClajRoom implements NetListener {
     p.reason = reason;
     host.sendTCP(p);
     
-    synchronized (clients) {
-      clients.remove(connection.getID());
-    }
+    clients.remove(connection.getID());
   }
   
   /** Doesn't notify the room host about a disconnected client */
   public void disconnectedQuietly(Connection connection, DcReason reason) {
     if (closed) return;
     
-    if (connection == host) {
-      close();
-      return;
-    }
-
-    synchronized (clients) {
-      clients.remove(connection.getID());
-    }
+    if (connection == host) close();
+    else clients.remove(connection.getID());
   }
   
   @Override
@@ -142,10 +132,8 @@ public class ClajRoom implements NetListener {
     if (closed) return;
     
     host.close(DcReason.closed);
-    synchronized (clients) {
-      clients.values().forEach(c -> c.close(DcReason.closed));
-      clients.clear();  
-    }
+    clients.values().forEach(c -> c.close(DcReason.closed));
+    clients.clear();
     
     closed = true;
   }
@@ -154,9 +142,7 @@ public class ClajRoom implements NetListener {
   public boolean contains(Connection con) {
     if (con == null) return false;
     if (con == host) return true;
-    synchronized (clients) {
-      return clients.containsKey(con.getID());  
-    }
+    return clients.containsKey(con.getID());
   }
   
   /** Send a message to the host and clients. */

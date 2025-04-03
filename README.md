@@ -27,7 +27,7 @@ A CLaJ server doesn't need much memory and cpu, 256MB of memory and one core are
 To change the memory allocated to the server, change the command to ``java -Xms<memory> -Xmx<memory> -jar claj-server.jar <port>``, where ``<memory>`` is the memory allocated to the server *(e.g. 256m for 256 MB of ram)*.
 
 > [!IMPORTANT]
-> Please note that, if you plan to make a public server, you can create a Pull-Request to add it to the public server list, in [public-servers.json](https://github.com/xpdustry/claj/blob/main/public-servers.json). <br><br>
+> Please note that, if you plan to make a public server, you can create a Pull-Request to add it to the public server list, in [public-servers.json](https://github.com/xpdustry/claj/blob/main/public-servers.hjson). <br><br>
 > Also, CLaJ servers are high bandwidth consumers, as they act as relay. For an average server, around 1TB up/down of consumption per month and around 1MB/s of constant network usage.
 
 

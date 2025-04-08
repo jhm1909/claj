@@ -117,6 +117,19 @@ public class ClajPackets {
   }
   
   public static class RoomCreateRequestPacket extends Packet {
+    public String version;
+    
+    public void read(ByteBufferInput read) {
+      if (read.buffer.hasRemaining()) {
+        try { version = read.readUTF(); }
+        catch (Exception e) { throw new RuntimeException(e); }  
+      }
+    }
+    
+    public void write(ByteBufferOutput write) {
+      try { write.writeUTF(version); }
+      catch (Exception e) { throw new RuntimeException(e); }
+    }
   }
   
   public static class RoomCloseRequestPacket extends Packet {

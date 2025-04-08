@@ -94,6 +94,7 @@ project(":server") {
   jar {
     archiveFileName = "${metadata.name}-server.jar"
     manifest.attributes["Main-Class"] = "com.xpdustry.claj.server.Main"
+    manifest.attributes["Claj-Version"] = metadata.version
     
     // Includes arc libs
     from {

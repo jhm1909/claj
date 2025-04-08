@@ -16,6 +16,7 @@ public class Main {
 
   public static ClajRelay relay;
   public static ClajControl control;
+  public static String serverVersion;
   
   public static void main(String[] args) {
     try {
@@ -41,9 +42,19 @@ public class Main {
       };  
 
       // Parse server port
-      if (args.length == 0) throw new RuntimeException("FATAL: Need a port as an argument!");
+      if (args.length == 0) throw new RuntimeException("Need a port as an argument!");
       int port = Integer.parseInt(args[0]);
       if (port < 0 || port > 0xffff) throw new RuntimeException("Invalid port range");
+      
+      // Get the server version from manifest
+      try { 
+        serverVersion = new java.util.jar.Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"))
+                                         .getMainAttributes().getValue("Claj-Version");
+        if (serverVersion == null) 
+          throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
+      } catch (Exception e) {
+        throw new RuntimeException("Unable to get the 'Claj-Version' property from the jar manifest", e);
+      }
       
       // Load settings and init server
       ClajConfig.load();

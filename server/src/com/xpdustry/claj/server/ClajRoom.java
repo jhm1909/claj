@@ -22,11 +22,12 @@ public class ClajRoom implements NetListener {
     this.host = host;
   }
 
+  /** Alert the host that a new client is coming */
   @Override
   public void connected(Connection connection) {
     if (closed) return;
     
-    // Alert the host that a new client is coming
+    // Assume the host is still connected
     ClajPackets.ConnectionJoinPacket p = new ClajPackets.ConnectionJoinPacket();
     p.conID = connection.getID();
     p.roomId = id;
@@ -35,6 +36,7 @@ public class ClajRoom implements NetListener {
     clients.put(connection.getID(), connection);
   }
 
+  /** Alert the host that a client disconnected */
   @Override
   public void disconnected(Connection connection, DcReason reason) {
     if (closed) return;
@@ -42,13 +44,14 @@ public class ClajRoom implements NetListener {
     if (connection == host) {
       close();
       return;
+      
+    } else if (host.isConnected()) {
+      ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
+      p.conID = connection.getID();
+      p.reason = reason;
+      host.sendTCP(p);
     }
-    
-    ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
-    p.conID = connection.getID();
-    p.reason = reason;
-    host.sendTCP(p);
-    
+
     clients.remove(connection.getID());
   }
   
@@ -72,22 +75,22 @@ public class ClajRoom implements NetListener {
       int conID = ((ClajPackets.ConnectionPacketWrapPacket)object).conID;
       Connection con = clients.get(conID);
       
-      if (con != null) {
+      if (con != null && con.isConnected()) {
         boolean tcp = ((ClajPackets.ConnectionPacketWrapPacket)object).isTCP;
         Object o = ((ClajPackets.ConnectionPacketWrapPacket)object).buffer;
         
         if (tcp) con.sendTCP(o);
         else con.sendUDP(o);
 
-      } else { // Notify that this connection doesn't exist, this case normally never happen
-        //TODO: verify that
-        /*ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
+      // Notify that this connection doesn't exist, this case normally never happen
+      } else if (host.isConnected()) { 
+        ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
         p.conID = conID;
         p.reason = DcReason.error;
-        host.sendTCP(p);*/
+        host.sendTCP(p);
       }
       
-    } else {
+    } else if (host.isConnected() && clients.containsKey(connection.getID())) {
       // Only raw buffers are allowed here.
       // We never send claj packets to anyone other than the room host, framework packets are ignored
       // and mindustry packets are saved as raw buffer.
@@ -96,7 +99,6 @@ public class ClajRoom implements NetListener {
       ClajPackets.ConnectionPacketWrapPacket p = new ClajPackets.ConnectionPacketWrapPacket();
       p.conID = connection.getID();
       p.buffer = (ByteBuffer)object;
-      
       host.sendTCP(p);
     }
   }
@@ -108,7 +110,7 @@ public class ClajRoom implements NetListener {
     if (connection == host) {
       // Ignore if this is the room host
       
-    } else {
+    } else if (host.isConnected() && clients.containsKey(connection.getID())) {
       ClajPackets.ConnectionIdlingPacket p = new ClajPackets.ConnectionIdlingPacket();
       p.conID = connection.getID();
       host.sendTCP(p);
@@ -117,6 +119,9 @@ public class ClajRoom implements NetListener {
   
   /** Notify the room id to the host. Must be called once. */
   public void create() {
+    if (closed) return;
+    
+    // Assume the host is still connected
     ClajPackets.RoomLinkPacket p = new ClajPackets.RoomLinkPacket();
     p.roomId = id;
     host.sendTCP(p);
@@ -127,20 +132,22 @@ public class ClajRoom implements NetListener {
     return closed;
   }
   
-  /** Closes the room and disconnects the host and all clients. The room object should not be used after this. */
+  /** 
+   * Closes the room and disconnects the host and all clients. 
+   * The room object shouldn't be used anymore after this.
+   */
   public void close() {
     if (closed) return;
+    closed = true; // close before kicking connections, to avoid receiving disconnect events
     
     host.close(DcReason.closed);
     clients.values().forEach(c -> c.close(DcReason.closed));
     clients.clear();
-    
-    closed = true;
   }
   
   /** Checks if the connection is the room host or one of his client */
   public boolean contains(Connection con) {
-    if (con == null) return false;
+    if (closed || con == null) return false;
     if (con == host) return true;
     return clients.containsKey(con.getID());
   }

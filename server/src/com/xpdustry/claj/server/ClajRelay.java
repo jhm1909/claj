@@ -23,15 +23,14 @@ public class ClajRelay extends Server implements NetListener {
   public final LongMap<ClajRoom> rooms = new LongMap<>();
 
   public ClajRelay() {
-    // Idk why but sometimes a BufferOverflowException can occur, so double the write buffer size.
-    super(32768*2, 16384, new Serializer());
+    super(32768, 16384, new Serializer());
     addListener(this);
   }
 
   @Override
   public void stop() {
-    if (ClajConfig.warnClosing) {
-      Log.info("Notifying that the server is closing...");
+    if (ClajConfig.warnClosing && !rooms.isEmpty()) {
+      Log.info("Notifying rooms that the server is closing...");
       
       try {
         // Notify all rooms that the server will be closed
@@ -77,16 +76,17 @@ public class ClajRelay extends Server implements NetListener {
     
     // Avoid searching for a room if it was an invalid connection or just a ping
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
-    
+
     ClajRoom room = find(connection);
     
     if (room != null) {
-      room.disconnected(connection, reason);
       // Remove the room if it was the host
       if (connection == room.host) {
         rooms.remove(room.id);
-        Log.info("Room @ closed because the host has disconnected.", room.idToString());
+        Log.info("Room @ closed because connection @ (the host) has disconnected.", room.idToString(),
+                 Strings.conIDToString(connection));
       }
+      room.disconnected(connection, reason);
     }      
   }
   
@@ -110,7 +110,7 @@ public class ClajRelay extends Server implements NetListener {
       
     // Compatibility for the xzxADIxzx's version
     } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
-      Log.warn("Rejecting connection @ because it's client version is obsolete.", Strings.conIDToString(connection));
+      Log.warn("Rejected connection @ for incompatible version.", Strings.conIDToString(connection));
       connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
                        + "installing the 'claj' mod, in the mod browser.");
       connection.close(DcReason.error);
@@ -122,9 +122,8 @@ public class ClajRelay extends Server implements NetListener {
         if (room.host == connection) return;
         room.disconnected(connection, DcReason.closed);
       }
-      
-      long roomId = ((ClajPackets.RoomJoinPacket)object).roomId;
-      room = get(roomId);
+
+      room = get(((ClajPackets.RoomJoinPacket)object).roomId);
       
       if (room != null) {
         room.connected(connection);
@@ -132,6 +131,17 @@ public class ClajRelay extends Server implements NetListener {
       } else connection.close(DcReason.error);
 
     } else if (object instanceof ClajPackets.RoomCreateRequestPacket) {
+      // Check the version of client
+      String version = ((ClajPackets.RoomCreateRequestPacket)object).version;
+      if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion)) {
+        Log.warn("Rejected connection @ for outdated version.", Strings.conIDToString(connection));
+        ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
+        p.message = "Your CLaJ version is outdated, please update it by reinstalling the 'claj' mod.";
+        connection.sendTCP(p);
+        connection.close(DcReason.error);
+        return;
+      }
+      
       // Ignore if the connection is already in a room or hold one
       if (room != null) return;
       
@@ -144,9 +154,9 @@ public class ClajRelay extends Server implements NetListener {
       // Only room host can close the room
       if (room == null || room.host != connection) return;
       
-      room.close();
-      rooms.remove(room.id);
       Log.info("Room @ closed by connection @ (the host).", room.idToString(), Strings.conIDToString(connection));
+      rooms.remove(room.id);
+      room.close();
       
     } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
       // Only room host can request a connection closing

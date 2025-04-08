@@ -1,5 +1,7 @@
 package com.xpdustry.claj.server;
 
+import arc.struct.IntMap;
+import arc.struct.LongMap;
 import arc.util.Log;
 import arc.util.serialization.Base64Coder;
 
@@ -15,7 +17,10 @@ public class ClajControl extends arc.util.CommandHandler {
     
     arc.util.Threads.daemon("Server Control", () -> {
       try (Scanner scanner = new Scanner(System.in)) {
-        while (scanner.hasNext()) handleCommand(scanner.nextLine());
+        while (scanner.hasNext()) {
+          try { handleCommand(scanner.nextLine()); }
+          catch (Throwable e) { Log.err(e); }
+        }
       }
     });
     
@@ -87,14 +92,13 @@ public class ClajControl extends arc.util.CommandHandler {
       }
       
       Log.info("Rooms: [total: @]", server.rooms.size);
-      server.rooms.values().forEach(r -> {
+      for (ClajRoom r : new LongMap.Values<>(server.rooms)) {
         Log.info("&lk|&fr Room @:", r.idToString());
         Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.host), Strings.getIP(r.host));
-        r.clients.forEach(e -> 
-          Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(e.value), Strings.getIP(e.value))
-        );
+        for (arc.net.Connection c : new IntMap.Values<>(r.clients))
+          Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(c), Strings.getIP(c));
         Log.info("&lk|&fr");
-      });
+      }
     });
 
     register("limit", "[amount]", "Sets spam packet limit. (0 to disable)", args -> {
@@ -140,7 +144,7 @@ public class ClajControl extends arc.util.CommandHandler {
       } else Log.err("Invalid argument. Must be 'add' or 'del'.");
     });
 
-    register("warn-deprecated", "[on|off]", "Warn the client if their CLaJ version is obsolete.", args -> {
+    register("warn-deprecated", "[on|off]", "Warn the client if it's CLaJ version is obsolete.", args -> {
       if (args.length == 0) 
         Log.info("Warn message when a client using an obsolete CLaJ version: @.", 
                  ClajConfig.warnDeprecated ? "enabled" : "disabled");
@@ -158,7 +162,7 @@ public class ClajControl extends arc.util.CommandHandler {
       } else Log.err("Invalid argument.");
     });
     
-    register("warn-closing", "[on|off]", "Warn all clients when the server is closing.", args -> {
+    register("warn-closing", "[on|off]", "Warn all rooms when the server is closing.", args -> {
       if (args.length == 0) 
         Log.info("Warn message when closing the server: @.", 
                  ClajConfig.warnClosing ? "enabled" : "disabled");
@@ -178,7 +182,7 @@ public class ClajControl extends arc.util.CommandHandler {
     
     register("say", "<room|all> <text...>", "Send a message to a room or all rooms.", args -> {
       if (args[0].equals("all")) {
-        server.rooms.values().forEach(r -> r.message(args[1]));
+        for (ClajRoom r : new LongMap.Values<>(server.rooms)) r.message(args[1]);
         Log.info("Message sent to all rooms.");
         return;
       }

@@ -22,6 +22,13 @@ import mindustry.gen.Call;
 
 public class ClajProxy extends Client implements NetListener {
   public static int defaultTimeout = 5000; //ms
+  /** No-op rate keeper, to avoid the player's server from life blacklisting the claj server . */
+  private static Ratekeeper noopRate = new Ratekeeper() {
+    @Override
+    public boolean allow(long spacing, int cap) {
+      return true;
+    }
+  };
   
   private final IntMap<VirtualConnection> connections = new IntMap<>();
   private final arc.net.Server server;
@@ -30,14 +37,6 @@ public class ClajProxy extends Client implements NetListener {
   private Runnable roomClosed;
   private long roomId = -1;
   private volatile boolean shutdown;
-  
-  /** No-op rate keeper, to avoid the player's server from life blacklisting the claj server . */
-  private Ratekeeper noopRate = new Ratekeeper() {
-    @Override
-    public boolean allow(long spacing, int cap) {
-      return true;
-    }
-  };
 
   public ClajProxy() {
     super(32768, 16384, new Serializer());
@@ -82,7 +81,6 @@ public class ClajProxy extends Client implements NetListener {
     if(shutdown) return;
     close();
     shutdown = true;
-    // For me it's showing an error, but there is no error....
     Reflect.<java.nio.channels.Selector>get(Client.class, this, "selector").wakeup();
   }
   
@@ -99,7 +97,9 @@ public class ClajProxy extends Client implements NetListener {
   @Override
   public void connected(Connection connection) {
     // Request the room link
-    sendTCP(new ClajPackets.RoomCreateRequestPacket());
+    ClajPackets.RoomCreateRequestPacket p = new ClajPackets.RoomCreateRequestPacket();
+    p.version = Main.getVersion(); // TODO: find a better way to gets mod version
+    sendTCP(p);
   }
 
   @Override
@@ -108,7 +108,7 @@ public class ClajProxy extends Client implements NetListener {
     if (roomClosed != null) roomClosed.run();
     // We cannot communicate with the server anymore, so close all virtual connections
     for (VirtualConnection c : connections.values())
-      c.closeFromProxy(reason);
+      c.closeQuietly(reason);
     connections.clear();
   }
 
@@ -156,14 +156,13 @@ public class ClajProxy extends Client implements NetListener {
         }
 
       } else if (object instanceof ClajPackets.ConnectionPacketWrapPacket) {
-        Object o = ((ClajPackets.ConnectionPacketWrapPacket)object).object;
-        con.notifyReceived0(o);
+        con.notifyReceived0(((ClajPackets.ConnectionPacketWrapPacket)object).object);
 
       } else if (object instanceof ClajPackets.ConnectionIdlingPacket) {
         con.notifyIdle0();
 
       } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
-        con.closeFromProxy(((ClajPackets.ConnectionClosedPacket)object).reason);
+        con.closeQuietly(((ClajPackets.ConnectionClosedPacket)object).reason);
       }
     }
   }
@@ -175,7 +174,7 @@ public class ClajProxy extends Client implements NetListener {
       if (buffer.get() == ClajPackets.id) {
         ClajPackets.Packet p = ClajPackets.newPacket(buffer.get());
         p.read(new ByteBufferInput(buffer));
-        if (p instanceof ClajPackets.ConnectionPacketWrapPacket)  // This one is special
+        if (p instanceof ClajPackets.ConnectionPacketWrapPacket) // This one is special
           ((ClajPackets.ConnectionPacketWrapPacket)p).object = super.read(buffer);
         return p;
       }
@@ -209,9 +208,9 @@ public class ClajProxy extends Client implements NetListener {
      * or when the server notifies that the connection has been closed.
      */
     volatile boolean isConnected = true;
-    ClajProxy proxy;
     /** The server will notify if the client is idling */
     volatile boolean isIdling = false;
+    ClajProxy proxy;
     
     public VirtualConnection(ClajProxy proxy, int id) {
       this.proxy = proxy;
@@ -258,7 +257,11 @@ public class ClajProxy extends Client implements NetListener {
       }
     }
     
-    public void closeFromProxy(DcReason reason) {
+    /** 
+     * Close the connection without notify the server about that. <br>
+     * Common use is when the server itself saying to close the connection.
+     */
+    public void closeQuietly(DcReason reason) {
       boolean wasConnected = isConnected;
       isConnected = false;
       isIdling = false;
@@ -271,13 +274,13 @@ public class ClajProxy extends Client implements NetListener {
     @Override
     public boolean isConnected() { return isConnected; }
     @Override
-    public void setKeepAliveTCP(int keepAliveMillis) {}
+    public void setKeepAliveTCP(int keepAliveMillis) {} // never used
     @Override
-    public void setTimeout(int timeoutMillis) {}
+    public void setTimeout(int timeoutMillis) {} // never used
+    @Override 
+    public InetSocketAddress getRemoteAddressTCP() { return isConnected() ? proxy.getRemoteAddressTCP() : null; } 
     @Override
-    public InetSocketAddress getRemoteAddressTCP() { return proxy.getRemoteAddressTCP(); }
-    @Override
-    public InetSocketAddress getRemoteAddressUDP() { return proxy.getRemoteAddressUDP(); }
+    public InetSocketAddress getRemoteAddressUDP() { return isConnected() ? proxy.getRemoteAddressUDP() : null; }
     @Override
     public int getTcpWriteBufferSize() { return 0; } // never used
     @Override
@@ -313,8 +316,15 @@ public class ClajProxy extends Client implements NetListener {
     
     private java.lang.reflect.Field listenersField;
     
+    
+    /** 
+     * Gets the connection listeners by using reflection.
+     * <p>
+     * TODO: very slow, needs to find another method.
+     */
     NetListener[] getListeners() {
       try {
+        // Cache the field for faster access
         if (listenersField == null) {
           listenersField = Connection.class.getDeclaredField("listeners");
           listenersField.setAccessible(true);

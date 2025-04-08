@@ -8,7 +8,7 @@ import arc.util.io.ByteBufferInput;
 import arc.util.io.ByteBufferOutput;
 
 
-/** @implNote This class must be the same for the client and the server. */
+/** @implNote This class must be the same for client and server. */
 public class ClajPackets {
   /** Identifier for CLaJ packets */
   public static final byte id = -4; /*doesn't uses other claj packet identifier to avoid problems*/
@@ -103,7 +103,7 @@ public class ClajPackets {
   
   public static class ConnectionJoinPacket extends ConnectionWrapperPacket {
     public long roomId = -1;
-    
+
     public void read0(ByteBufferInput read) {
       roomId = read.readLong();
     }
@@ -117,6 +117,19 @@ public class ClajPackets {
   }
   
   public static class RoomCreateRequestPacket extends Packet {
+    public String version;
+    
+    public void read(ByteBufferInput read) {
+      if (read.buffer.hasRemaining()) {
+        try { version = read.readUTF(); }
+        catch (Exception e) { throw new RuntimeException(e); }  
+      }
+    }
+    
+    public void write(ByteBufferOutput write) {
+      try { write.writeUTF(version); }
+      catch (Exception e) { throw new RuntimeException(e); }
+    }
   }
   
   public static class RoomCloseRequestPacket extends Packet {

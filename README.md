@@ -23,6 +23,10 @@ But please note that after this, the mod will no longer be available for v7. You
   Next, edit the file ``mod.hjson`` by replacing the line ``minGameVersion`` with ``minGameVersion: "147"``. *(for 7-zip: ``Right Click`` and ``Edit``)* <br>
   Then save the file, close it, accept changes for 7-zip, or re-zipping it. <br>
   If all goes well, when you restart your game (Mindustry v8 version), the mod will be available.
+  
+  ---
+
+  Another method is to clone the repository, replace the line ``minGameVersion`` with ``minGameVersion: "147"`` in the file ``mod.hjson``, compile the mod *(see [#how-to-build](#how-to-build))*, and then copy the jar file into the mod directory.
 </details>
 
 

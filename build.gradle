@@ -55,7 +55,7 @@ project(":client") {
   mergeJar {
     archiveFileName = "${metadata.name}-client.jar"
    
-    // Includes mod descriptor
+    // Includes mod json and icon
     from(rootDir) {
       include "mod.hjson"
       include "icon.png"

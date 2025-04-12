@@ -76,17 +76,16 @@ public class ClajRelay extends Server implements NetListener {
     
     // Avoid searching for a room if it was an invalid connection or just a ping
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
-
+    
     ClajRoom room = find(connection);
     
     if (room != null) {
       // Remove the room if it was the host
-      if (connection == room.host) {
-        rooms.remove(room.id);
-        Log.info("Room @ closed because connection @ (the host) has disconnected.", room.idToString(),
-                 Strings.conIDToString(connection));
-      }
+      if (connection == room.host) rooms.remove(room.id);
       room.disconnected(connection, reason);
+      if (room.isClosed()) Log.info("Room @ closed because connection @ (the host) has disconnected.", 
+                                    room.idToString(), Strings.conIDToString(connection));
+      else Log.info("Connection @ left the room @.",  Strings.conIDToString(connection), room.idToString());
     }      
   }
   
@@ -110,10 +109,10 @@ public class ClajRelay extends Server implements NetListener {
       
     // Compatibility for the xzxADIxzx's version
     } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
-      Log.warn("Rejected connection @ for incompatible version.", Strings.conIDToString(connection));
       connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
                        + "installing the 'claj' mod, in the mod browser.");
       connection.close(DcReason.error);
+      Log.warn("Rejected connection @ for incompatible version.", Strings.conIDToString(connection));
       
     } else if (object instanceof ClajPackets.RoomJoinPacket) {
       // Disconnect from a potential another room.
@@ -134,11 +133,11 @@ public class ClajRelay extends Server implements NetListener {
       // Check the version of client
       String version = ((ClajPackets.RoomCreateRequestPacket)object).version;
       if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion)) {
-        Log.warn("Rejected connection @ for outdated version.", Strings.conIDToString(connection));
         ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
         p.message = "Your CLaJ version is outdated, please update it by reinstalling the 'claj' mod.";
         connection.sendTCP(p);
         connection.close(DcReason.error);
+        Log.warn("Rejected connection @ for outdated version.", Strings.conIDToString(connection));
         return;
       }
       

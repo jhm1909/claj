@@ -7,8 +7,10 @@ description: '''
 Reworked CLaJ protocol of the xzxADIxzx's Scheme Size mod.
 
 CLaJ (Copy Link and Join) allow you to play with your friends just by creating a room, copy the link and send it to your friends.
+
+Please check this link for Mindustry v8 compatibility: https://github.com/xpdustry/claj?tab=readme-ov-file#mindustry-v8-note 
 '''
-version: "2.2"
+version: "2.2.1"
 minGameVersion: "146"
 java: true
 hidden: true

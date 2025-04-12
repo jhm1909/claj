@@ -21,7 +21,6 @@ public class Claj {
         if (!Vars.net.active() || Vars.state.isMenu()) closeRoom();
       }, 1f);
     });
-    
     Events.run(EventType.HostEvent.class, Claj::closeRoom);
     Events.run(EventType.ClientPreConnectEvent.class, Claj::closeRoom);
     Events.run(EventType.DisposeEvent.class, () -> {

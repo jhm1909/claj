@@ -64,8 +64,8 @@ public class ClajPackets {
       write0(write);
     }
     
-    public void read0(ByteBufferInput read) {};
-    public void write0(ByteBufferOutput write) {};
+    protected void read0(ByteBufferInput read) {};
+    protected void write0(ByteBufferOutput write) {};
   }
 
   /** Special packet for connection packet wrapping. */
@@ -77,11 +77,11 @@ public class ClajPackets {
     
     public boolean isTCP;
     
-    public void read0(ByteBufferInput read) {
+    protected void read0(ByteBufferInput read) {
       isTCP = read.readBoolean();
     }
     
-    public void write0(ByteBufferOutput write) {
+    protected void write0(ByteBufferOutput write) {
       write.writeBoolean(isTCP);
     }
   }
@@ -91,12 +91,12 @@ public class ClajPackets {
 
     public DcReason reason;
 
-    public void read0(ByteBufferInput read) {
+    protected void read0(ByteBufferInput read) {
       byte b = read.readByte();
       reason = b < 0 || b >= reasons.length ? DcReason.error : reasons[b];
     }
 
-    public void write0(ByteBufferOutput write) {
+    protected void write0(ByteBufferOutput write) {
       write.writeByte((byte)reason.ordinal());
     }
   }
@@ -104,11 +104,11 @@ public class ClajPackets {
   public static class ConnectionJoinPacket extends ConnectionWrapperPacket {
     public long roomId = -1;
 
-    public void read0(ByteBufferInput read) {
+    protected void read0(ByteBufferInput read) {
       roomId = read.readLong();
     }
     
-    public void write0(ByteBufferOutput write) {
+    protected void write0(ByteBufferOutput write) {
       write.writeLong(roomId);
     }
   }

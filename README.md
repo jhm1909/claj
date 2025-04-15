@@ -13,7 +13,7 @@ This is a bundled, reworked and optimized version of the [CLaJ server](https://g
 Mindustry v8 has been released, and many changes have been made. Mods must now make changes to be compatible with this version.
 
 The mod will not be updated to this version at this time, but it remains compatible with it. <br>
-For that, you must makes a trick to force the minimal mindustry version. <br>
+For that, we needs a trick to force the minimal mindustry version. <br>
 But please note that after this, the mod will no longer be available for v7. You'll need to reinstall the mod to cancel the changes.
 <details>
   <summary>Steps to modify the mod for Mindustry v8 compatibility:</summary>

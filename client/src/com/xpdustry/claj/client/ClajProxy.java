@@ -11,6 +11,7 @@ import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.NetListener;
 import arc.struct.IntMap;
+import arc.struct.Seq;
 import arc.util.Ratekeeper;
 import arc.util.Reflect;
 import arc.util.io.ByteBufferInput;
@@ -30,7 +31,10 @@ public class ClajProxy extends Client implements NetListener {
     }
   };
   
+  /** For faster get */
   private final IntMap<VirtualConnection> connections = new IntMap<>();
+  /** For faster iteration */
+  private final Seq<VirtualConnection> orderedConnections = new Seq<>(false);
   private final arc.net.Server server;
   private final NetListener serverDispatcher;
   private Cons<Long> roomCreated;
@@ -58,14 +62,25 @@ public class ClajProxy extends Client implements NetListener {
     connect(defaultTimeout, host, udpTcpPort, udpTcpPort);
   }
   
-  /** redefine #run() and #stop() to handle exceptions and restart update loop if needed */
+  /** 
+   * Redefine {@link #run()} and {@link #stop()} to handle exceptions and restart update loop if needed. <br>
+   * And to handle connection idling.
+   */
   @Override
   public void run() {
     shutdown = false;
     while(!shutdown) {
-      try { update(250); } 
-      catch (IOException ex) { close(); } 
-      catch (ArcNetException ex) {
+      try { 
+        update(250); 
+        // update idle
+        for (int i=0; i<orderedConnections.size; i++) {
+          VirtualConnection con = orderedConnections.get(i);
+          if (con.isConnected() && con.isIdle())
+            con.notifyIdle0();
+        }
+      } catch (IOException ex) { 
+        close(); 
+      } catch (ArcNetException ex) {
         if (roomId == -1) {
           close();
           Reflect.set(Client.class, this, "lastProtocolError", ex);
@@ -75,7 +90,7 @@ public class ClajProxy extends Client implements NetListener {
     }
   }
   
-  /** redefine #run() and #stop() to handle exceptions and restart update loop if needed */
+  /** Redefine {@link #run()} and {@link #stop()} to handle exceptions and restart update loop if needed. */
   @Override
   public void stop() {
     if(shutdown) return;
@@ -107,9 +122,10 @@ public class ClajProxy extends Client implements NetListener {
     roomId = -1;
     if (roomClosed != null) roomClosed.run();
     // We cannot communicate with the server anymore, so close all virtual connections
-    for (VirtualConnection c : connections.values())
-      c.closeQuietly(reason);
+    for (int i=0; i<orderedConnections.size; i++)
+      orderedConnections.get(i).closeQuietly(reason);
     connections.clear();
+    orderedConnections.clear();
   }
 
   @Override
@@ -120,14 +136,13 @@ public class ClajProxy extends Client implements NetListener {
       Call.sendMessage("[scarlet][[CLaJ Server]:[] " + ((ClajPackets.ClajMessagePacket)object).message);
     
     } else if (object instanceof ClajPackets.RoomLinkPacket) {
-      // If this happen and the room id has already been received, it's probably a mitm attack =/.
-      // But it's not alerting if the first id received is the wrong and right one is blocked by the middle-man.
-      if (roomId == -1) {
-        roomId = ((ClajPackets.RoomLinkPacket)object).roomId;
-        // -1 is not allowed since it's used to specify an uncreated room
-        if (roomId != -1 && roomCreated != null) roomCreated.get(roomId);
-      } else Vars.ui.showInfo("@claj.proxy.alert.room-link-changed"); // alert the host about that
-
+      // Ignore if the room id is received twice
+      if (roomId != -1) return;
+      
+      roomId = ((ClajPackets.RoomLinkPacket)object).roomId;
+      // -1 is not allowed since it's used to specify an uncreated room
+      if (roomId != -1 && roomCreated != null) roomCreated.get(roomId);
+      
     } else if (object instanceof ClajPackets.ConnectionWrapperPacket) {
       // Ignore packets until the room id is received
       if (roomId == -1) return;
@@ -148,7 +163,7 @@ public class ClajProxy extends Client implements NetListener {
             return;
           }
 
-          connections.put(id, con = new VirtualConnection(this, id));
+          addConnection(con = new VirtualConnection(this, id));
           con.notifyConnected0();
           // Change the packet rate and chat rate to a no-op version
           ((mindustry.net.NetConnection)con.getArbitraryData()).packetRate = noopRate;
@@ -159,12 +174,22 @@ public class ClajProxy extends Client implements NetListener {
         con.notifyReceived0(((ClajPackets.ConnectionPacketWrapPacket)object).object);
 
       } else if (object instanceof ClajPackets.ConnectionIdlingPacket) {
-        con.notifyIdle0();
+        con.setIdle();
 
       } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
         con.closeQuietly(((ClajPackets.ConnectionClosedPacket)object).reason);
       }
     }
+  }
+  
+  protected void addConnection(VirtualConnection con) {
+    connections.put(con.id, con);
+    orderedConnections.add(con);
+  }
+  
+  protected void removeConnection(VirtualConnection con) {
+    connections.remove(con.id);
+    orderedConnections.remove(con);
   }
 
   
@@ -209,7 +234,7 @@ public class ClajProxy extends Client implements NetListener {
      */
     volatile boolean isConnected = true;
     /** The server will notify if the client is idling */
-    volatile boolean isIdling = false;
+    volatile boolean isIdling = true;
     ClajProxy proxy;
     
     public VirtualConnection(ClajProxy proxy, int id) {
@@ -245,8 +270,7 @@ public class ClajProxy extends Client implements NetListener {
     @Override
     public void close(DcReason reason) {
       boolean wasConnected = isConnected;
-      isConnected = false;
-      isIdling = false;
+      isConnected = isIdling = false;
       if(wasConnected) {
         ClajPackets.ConnectionClosedPacket p = new ClajPackets.ConnectionClosedPacket();
         p.conID = id;
@@ -263,8 +287,7 @@ public class ClajProxy extends Client implements NetListener {
      */
     public void closeQuietly(DcReason reason) {
       boolean wasConnected = isConnected;
-      isConnected = false;
-      isIdling = false;
+      isConnected = isIdling = false;
       if(wasConnected) 
         notifyDisconnected0(reason);
     }
@@ -296,13 +319,16 @@ public class ClajProxy extends Client implements NetListener {
     }
   
     public void notifyDisconnected0(DcReason reason) {
-      proxy.connections.remove(id);
+      proxy.removeConnection(this);
       for(NetListener listener : getListeners())
         listener.disconnected(this, reason);
     }
-  
-    public void notifyIdle0() {
+    
+    public void setIdle() {
       isIdling = true;
+    }
+    
+    public void notifyIdle0() {
       for(NetListener listener : getListeners()) {
         listener.idle(this);
         if(!isIdle()) break;

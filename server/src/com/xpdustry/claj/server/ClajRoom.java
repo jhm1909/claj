@@ -10,7 +10,7 @@ import arc.util.serialization.Base64Coder;
 
 
 public class ClajRoom implements NetListener {
-  private boolean closed;
+  private /*volatile*/ boolean closed;
   
   public final long id;
   public final Connection host;
@@ -106,7 +106,7 @@ public class ClajRoom implements NetListener {
   @Override
   public void idle(Connection connection) {
     if (closed) return;
-    
+
     if (connection == host) {
       // Ignore if this is the room host
       

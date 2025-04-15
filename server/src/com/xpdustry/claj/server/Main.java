@@ -50,18 +50,18 @@ public class Main {
       try { 
         serverVersion = new java.util.jar.Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"))
                                          .getMainAttributes().getValue("Claj-Version");
-        if (serverVersion == null) 
-          throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
       } catch (Exception e) {
         throw new RuntimeException("Unable to get the 'Claj-Version' property from the jar manifest", e);
       }
+      if (serverVersion == null) 
+        throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
       
       // Load settings and init server
       ClajConfig.load();
       Log.level = ClajConfig.debug ? Log.LogLevel.debug : Log.LogLevel.info; // set log level
       relay = new ClajRelay();
       try { relay.bind(port, port); } 
-      catch (java.io.IOException e) { throw new RuntimeException(e); }
+      catch (Exception e) { throw new RuntimeException(e); }
       // Register commands
       control = new ClajControl(relay);
       

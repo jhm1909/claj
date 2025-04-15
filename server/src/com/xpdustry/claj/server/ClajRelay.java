@@ -11,6 +11,7 @@ import arc.net.FrameworkMessage.*;
 import arc.net.NetListener;
 import arc.net.NetSerializer;
 import arc.net.Server;
+import arc.struct.IntSet;
 import arc.struct.LongMap;
 import arc.util.Log;
 import arc.util.Ratekeeper;
@@ -20,6 +21,8 @@ import arc.util.io.ByteBufferOutput;
 
 
 public class ClajRelay extends Server implements NetListener {
+  /** Cache already notified idling connection to avoid packet spamming */
+  protected final IntSet notifiedIdle = new IntSet();
   public final LongMap<ClajRoom> rooms = new LongMap<>();
 
   public ClajRelay() {
@@ -35,8 +38,8 @@ public class ClajRelay extends Server implements NetListener {
       try {
         // Notify all rooms that the server will be closed
         rooms.values().forEach(r -> 
-          r.message("The server is shutting down, please wait a minute or choose another server."));
-        
+          r.message("The server is shutting down, please wait a minute or choose another server."));  
+      
         // Yea we needs a new thread... because we don't have arc.Timer
         Threads.daemon(() -> {
           // Give time to message to be send to all clients
@@ -56,7 +59,7 @@ public class ClajRelay extends Server implements NetListener {
   public void closeRooms() {
     try { rooms.values().forEach(ClajRoom::close); } 
     catch (Throwable ignored) {}
-    rooms.clear();
+    rooms.clear();  
   }
   
   @Override
@@ -73,6 +76,7 @@ public class ClajRelay extends Server implements NetListener {
   @Override
   public void disconnected(Connection connection, DcReason reason) {
     Log.debug("Connection @ lost: @.", Strings.conIDToString(connection), reason);
+    notifiedIdle.remove(connection.getID());
     
     // Avoid searching for a room if it was an invalid connection or just a ping
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
@@ -80,18 +84,20 @@ public class ClajRelay extends Server implements NetListener {
     ClajRoom room = find(connection);
     
     if (room != null) {
-      // Remove the room if it was the host
-      if (connection == room.host) rooms.remove(room.id);
       room.disconnected(connection, reason);
-      if (room.isClosed()) Log.info("Room @ closed because connection @ (the host) has disconnected.", 
-                                    room.idToString(), Strings.conIDToString(connection));
-      else Log.info("Connection @ left the room @.",  Strings.conIDToString(connection), room.idToString());
+      // Remove the room if it was the host
+      if (connection == room.host) {
+        rooms.remove(room.id);
+        Log.info("Room @ closed because connection @ (the host) has disconnected.", 
+                 room.idToString(), Strings.conIDToString(connection));
+      } else Log.info("Connection @ left the room @.",  Strings.conIDToString(connection), room.idToString());  
     }      
   }
   
   @Override
   public void received(Connection connection, Object object) {
     if (!(connection.getArbitraryData() instanceof Ratekeeper) || (object instanceof FrameworkMessage)) return;
+    notifiedIdle.remove(connection.getID());
     Ratekeeper rate = (Ratekeeper)connection.getArbitraryData();
     ClajRoom room = find(connection);
     
@@ -99,13 +105,13 @@ public class ClajRelay extends Server implements NetListener {
     if ((room == null || room.host != connection) && 
         ClajConfig.spamLimit > 0 && !rate.allow(3000L, ClajConfig.spamLimit)) {
       rate.occurences = -ClajConfig.spamLimit; // reset to prevent message spam
-      
-      Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
+
       if (room != null) {
         room.message("A client has been kicked for packets spamming.");
         room.disconnected(connection, DcReason.closed);
       }
       connection.close(DcReason.closed);   
+      Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
       
     // Compatibility for the xzxADIxzx's version
     } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
@@ -143,20 +149,20 @@ public class ClajRelay extends Server implements NetListener {
       
       // Ignore if the connection is already in a room or hold one
       if (room != null) return;
-      
+
       room = new ClajRoom(newRoomId(), connection);
       rooms.put(room.id, room);
       room.create();
-      Log.info("Room @ created by connection @.", room.idToString(), Strings.conIDToString(connection));
-      
+      Log.info("Room @ created by connection @.", room.idToString(), Strings.conIDToString(connection));  
+
     } else if (object instanceof ClajPackets.RoomCloseRequestPacket) {
       // Only room host can close the room
       if (room == null || room.host != connection) return;
-      
-      Log.info("Room @ closed by connection @ (the host).", room.idToString(), Strings.conIDToString(connection));
+
       rooms.remove(room.id);
       room.close();
-      
+      Log.info("Room @ closed by connection @ (the host).", room.idToString(), Strings.conIDToString(connection));
+    
     } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
       // Only room host can request a connection closing
       if (room == null || room.host != connection) return;
@@ -174,6 +180,9 @@ public class ClajRelay extends Server implements NetListener {
       
     // Ignore if the connection is not in a room
     } else if (room != null) {
+      if (room.host == connection && (object instanceof ClajPackets.ConnectionWrapperPacket))
+        notifiedIdle.remove(((ClajPackets.ConnectionWrapperPacket)object).conID);
+      
       room.received(connection, object);
     }
   }
@@ -181,6 +190,7 @@ public class ClajRelay extends Server implements NetListener {
   @Override
   public void idle(Connection connection) {
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
+    if (!notifiedIdle.add(connection.getID())) return;
 
     ClajRoom room = find(connection);
     if (room != null) room.idle(connection);
@@ -202,7 +212,7 @@ public class ClajRelay extends Server implements NetListener {
     for (ClajRoom r : rooms.values()) {
       if (r.contains(con)) return r;
     }
-    return null;
+    return null;  
   }
 
   

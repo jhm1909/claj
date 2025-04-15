@@ -195,7 +195,7 @@ public class CreateClajRoomDialog extends BaseDialog {
         bselected = button;
       });
       table.add(button).checked(b -> bselected == b).growX().padTop(5).padBottom(5).row();
-      
+
       Stack stack = new Stack();
       Table inner = new Table();
       inner.setColor(Pal.gray);
@@ -206,13 +206,14 @@ public class CreateClajRoomDialog extends BaseDialog {
       Table ping = inner.table(t -> {}).margin(0).pad(0).left().fillX().get();
       inner.add().expandX();
       Table label = new Table().center();
-      if (Vars.mobile) {
+      // Cut in two line for mobiles or if the name is too long
+      if (Vars.mobile || (servers.getKeyAt(i) + " (" + servers.getValueAt(i) + ')').length() > 54) {
         label.add(servers.getKeyAt(i)).pad(5, 5, 0, 5).expandX().row();
         label.add(" [lightgray](" + servers.getValueAt(i) + ')').pad(5, 0, 5, 5).expandX();
       } else label.add(servers.getKeyAt(i) + " [lightgray](" + servers.getValueAt(i) + ')') .pad(5).expandX();
       
-      stack.add(inner);
       stack.add(label);
+      stack.add(inner);
       
       if (editable) {
         final int i0 = i;

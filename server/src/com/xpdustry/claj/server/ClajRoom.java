@@ -10,7 +10,7 @@ import arc.util.serialization.Base64Coder;
 
 
 public class ClajRoom implements NetListener {
-  private /*volatile*/ boolean closed;
+  private boolean closed;
   
   public final long id;
   public final Connection host;

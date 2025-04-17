@@ -141,10 +141,7 @@ public class ClajRoom implements NetListener {
     closed = true; // close before kicking connections, to avoid receiving events
     
     host.close(DcReason.closed);
-    clients.values().forEach(c -> {
-      c.setIdleThreshold(-1f);//try to avoid getting idle events
-      c.close(DcReason.closed);
-    });
+    clients.values().forEach(c -> c.close(DcReason.closed));
     clients.clear();
   }
   

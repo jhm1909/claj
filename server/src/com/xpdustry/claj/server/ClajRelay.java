@@ -118,7 +118,7 @@ public class ClajRelay extends Server implements NetListener {
       connection.sendTCP("[scarlet][[CLaJ Server]:[] Your CLaJ version is obsolete! Please update it by "
                        + "installing the 'claj' mod, in the mod browser.");
       connection.close(DcReason.error);
-      Log.warn("Rejected connection @ for incompatible version.", Strings.conIDToString(connection));
+      Log.warn("Rejected room creation of connection @ for incompatible version.", Strings.conIDToString(connection));
       
     } else if (object instanceof ClajPackets.RoomJoinPacket) {
       // Disconnect from a potential another room.
@@ -138,12 +138,14 @@ public class ClajRelay extends Server implements NetListener {
     } else if (object instanceof ClajPackets.RoomCreateRequestPacket) {
       // Check the version of client
       String version = ((ClajPackets.RoomCreateRequestPacket)object).version;
-      if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion)) {
+      // Ignore the last part of version, the minor part. (versioning format: 2.major.minor)
+      // The minor part is used when no changes have been made to the client version.
+      if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion, 2)) {
         ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
         p.message = "Your CLaJ version is outdated, please update it by reinstalling the 'claj' mod.";
         connection.sendTCP(p);
         connection.close(DcReason.error);
-        Log.warn("Rejected connection @ for outdated version.", Strings.conIDToString(connection));
+        Log.warn("Rejected room creation of connection @ for outdated version.", Strings.conIDToString(connection));
         return;
       }
       

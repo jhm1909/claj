@@ -62,6 +62,13 @@ public class ClajControl extends arc.util.CommandHandler {
                  "&fr - &lw" + c.description));
     });
     
+    register("gc", "Trigger a garbage collection.", arg -> {
+      int pre = (int)((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024);
+      System.gc();
+      int post = (int)((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024);
+      Log.info("@ MB collected. Memory usage now at @ MB.", pre - post, post);
+    });
+    
     register("exit", "Stop the server.", args -> {
       Log.info("Shutting down CLaJ server.");
       server.stop();

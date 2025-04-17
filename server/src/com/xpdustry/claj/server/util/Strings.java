@@ -12,11 +12,21 @@ import arc.util.serialization.JsonWriter.OutputType;
 
 
 public class Strings extends arc.util.Strings {
-  /** 
-   * @return whether {@code newVersion} is greater than {@code currentVersion}, e.g. "v146" > "124.1"
-   * @apiNote can handle multiple dots in the version, and it's very fast because it only does one iteration.
-   */
+  
   public static boolean isVersionAtLeast(String currentVersion, String newVersion) {
+    return isVersionAtLeast(currentVersion, newVersion, 0);
+  }
+  /** 
+   * Compare if the {@code newVersion} is greater than the {@code currentVersion}, e.g. "v146" > "124.1". <br>
+   * {@code maxDepth} limits the number of comparisons of version segments, allowing sub-versions to be ignored. 
+   * (default is 0)
+   * 
+   * @apiNote can handle multiple dots in the version and the 'v' prefix, 
+   *          and it's very fast because it only does one iteration.
+   */
+  public static boolean isVersionAtLeast(String currentVersion, String newVersion, int maxDepth) {
+    if (maxDepth < 1) maxDepth = Integer.MAX_VALUE;
+    
     int last1 = currentVersion.startsWith("v") ? 1 : 0, 
         last2 = newVersion.startsWith("v") ? 1 : 0, 
         len1 = currentVersion.length(), 
@@ -24,7 +34,7 @@ public class Strings extends arc.util.Strings {
         dot1 = 0, dot2 = 0, 
         p1 = 0, p2 = 0;
     
-    while ((dot1 != -1  && dot2 != -1) && (last1 < len1 && last2 < len2)) {
+    while ((dot1 != -1 && dot2 != -1) && (last1 < len1 && last2 < len2) && maxDepth-- > 0) {
       dot1 = currentVersion.indexOf('.', last1);
       dot2 = newVersion.indexOf('.', last2);
       if (dot1 == -1) dot1 = len1;
@@ -37,6 +47,7 @@ public class Strings extends arc.util.Strings {
 
       if (p1 != p2) return p2 > p1;
     }
+    if (maxDepth <= 0) return p2 > p1;
 
     // Continue iteration on newVersion to see if it's just leading zeros.
     while (dot2 != -1 && last2 < len2) {

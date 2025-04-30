@@ -33,8 +33,7 @@ allprojects {
     targetCompatibility = JavaVersion.VERSION_1_8
     sourceCompatibility = JavaVersion.VERSION_1_8 //JavaVersion.VERSION_17
     options.encoding = "UTF-8"
-    
-    //options.compilerArgs.addAll(['--release', '8'])
+    options.compilerArgs.addAll(['--release', '8'])
   }
 }
 
@@ -50,7 +49,7 @@ project(":client") {
   dependencies {
     compileOnly toxopid.dependencies.arcCore
     compileOnly toxopid.dependencies.mindustryCore
-	}
+  }
 
   mergeJar {
     archiveFileName = "${metadata.name}-client.jar"
@@ -61,7 +60,7 @@ project(":client") {
       include "icon.png"
     }
 
-    //copy the builded jar to the working directory
+    // Copy the builded jar to the working directory
     doLast {
       copy {
         from mergeJar
@@ -70,7 +69,7 @@ project(":client") {
     }
   }
 	
-	// Includes android dex
+  // Includes android dex
   build {
     dependsOn mergeJar
   }
@@ -87,7 +86,7 @@ project(":server") {
 
   dependencies {
     implementation toxopid.dependencies.arcCore
-    implementation "com.github.Anuken.Arc:arcnet:${toxopid.compileVersion}"
+    implementation "com.github.Anuken.Arc:arcnet:${toxopid.compileVersion}" //toxopid.dependencies.arcnet
     //implementation toxopid.dependencies.arcHeadless
   }
   
@@ -101,7 +100,7 @@ project(":server") {
       configurations.runtimeClasspath.collect { it.isDirectory() ? it : zipTree(it) }
     }
     
-    //copy the builded jar to the working directory
+    // Copy the builded jar to the working directory
     doLast {
       copy {
         from jar

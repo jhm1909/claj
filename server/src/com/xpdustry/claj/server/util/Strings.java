@@ -1,4 +1,3 @@
-
 package com.xpdustry.claj.server.util;
 
 import java.io.IOException;
@@ -7,6 +6,7 @@ import java.io.Writer;
 
 import arc.func.Intf;
 import arc.net.Connection;
+import arc.util.serialization.Base64Coder;
 import arc.util.serialization.JsonValue;
 import arc.util.serialization.JsonWriter.OutputType;
 
@@ -208,8 +208,33 @@ public class Strings extends arc.util.Strings {
     return "0x"+Integer.toHexString(con.getID());
   }
   
+  public static String conIDToString(int conID) {
+    return "0x"+Integer.toHexString(conID);
+  }
+  
   public static String getIP(Connection con) {
     java.net.InetSocketAddress a = con.getRemoteAddressTCP();
     return a == null ? null : a.getAddress().getHostAddress();
+  }
+  
+  /** Encodes a long to an url-safe base64 string. */
+  public static String longToBase64(long l) {
+    byte[] result = new byte[Long.BYTES];
+    for (int i=Long.BYTES-1; i>=0; i--) {
+        result[i] = (byte)(l & 0xFF);
+        l >>= 8;
+    }
+    return new String(Base64Coder.encode(result, Base64Coder.urlsafeMap));
+  }
+  
+  public static long base64ToLong(String str) {
+    byte[] b = Base64Coder.decode(str, Base64Coder.urlsafeMap);
+    if (b.length != Long.BYTES) throw new IndexOutOfBoundsException("must be " + Long.BYTES + " bytes");
+    long result = 0;
+    for (int i=0; i<Long.BYTES; i++) {
+        result <<= 8;
+        result |= (b[i] & 0xFF);
+    }
+    return result;
   }
 }

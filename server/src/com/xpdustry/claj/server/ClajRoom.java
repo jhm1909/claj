@@ -6,7 +6,6 @@ import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.NetListener;
 import arc.struct.IntMap;
-import arc.util.serialization.Base64Coder;
 
 
 public class ClajRoom implements NetListener {
@@ -167,17 +166,6 @@ public class ClajRoom implements NetListener {
    * @see com.xpdustry.claj.client.ClajLink
    */
   public String idToString() {
-    return new String(Base64Coder.encode(longToBytes(id), Base64Coder.urlsafeMap));
-  }
-  
-  
-  /** Copy of {@link com.xpdustry.claj.client.ClajLink#longToBytes(long)} */
-  private static byte[] longToBytes(long l) {
-    byte[] result = new byte[Long.BYTES];
-    for (int i=Long.BYTES-1; i>=0; i--) {
-        result[i] = (byte)(l & 0xFF);
-        l >>= 8;
-    }
-    return result;
+    return com.xpdustry.claj.server.util.Strings.longToBase64(id);
   }
 }

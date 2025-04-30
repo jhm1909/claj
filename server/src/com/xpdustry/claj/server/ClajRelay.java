@@ -11,6 +11,7 @@ import arc.net.FrameworkMessage.*;
 import arc.net.NetListener;
 import arc.net.NetSerializer;
 import arc.net.Server;
+import arc.struct.IntMap;
 import arc.struct.IntSet;
 import arc.struct.LongMap;
 import arc.util.Log;
@@ -21,8 +22,17 @@ import arc.util.io.ByteBufferOutput;
 
 
 public class ClajRelay extends Server implements NetListener {
-  /** Cache already notified idling connection to avoid packet spamming */
+  /** 
+   * Keeps a cache of packets received from connections that are not yet in a room. (queue of 3 packets)<br>
+   * Because sometimes {@link ClajPackets.RoomJoinPacket} comes after {@link Packets.ConnectPacket}, 
+   * when the client connection is slow.
+   */
+  protected final IntMap<ByteBuffer[]> packetQueue = new IntMap<>();
+  protected final int packetQueueMaxSize = 3;
+  
+  /** Keeps a cache for already notified idling connection, to avoid packet spamming. */
   protected final IntSet notifiedIdle = new IntSet();
+  
   public final LongMap<ClajRoom> rooms = new LongMap<>();
 
   public ClajRelay() {
@@ -77,6 +87,7 @@ public class ClajRelay extends Server implements NetListener {
   public void disconnected(Connection connection, DcReason reason) {
     Log.debug("Connection @ lost: @.", Strings.conIDToString(connection), reason);
     notifiedIdle.remove(connection.getID());
+    packetQueue.remove(connection.getID());
     
     // Avoid searching for a room if it was an invalid connection or just a ping
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
@@ -124,7 +135,12 @@ public class ClajRelay extends Server implements NetListener {
       // Disconnect from a potential another room.
       if (room != null) {
         // Ignore if it's the host of another room
-        if (room.host == connection) return;
+        if (room.host == connection) {
+          Log.warn("Connection @ tried to join the room @ but is already hosting the room @.", 
+                   Strings.conIDToString(connection), 
+                   Strings.longToBase64(((ClajPackets.RoomJoinPacket)object).roomId), room.idToString());
+          return;
+        }
         room.disconnected(connection, DcReason.closed);
       }
 
@@ -132,14 +148,24 @@ public class ClajRelay extends Server implements NetListener {
       
       if (room != null) {
         room.connected(connection);
-        Log.info("Connection @ joined the room @.", Strings.conIDToString(connection), room.idToString());   
+        Log.info("Connection @ joined the room @.", Strings.conIDToString(connection), room.idToString());
+        
+        // Send the queued packets of connections to room host
+        ByteBuffer[] queue = packetQueue.remove(connection.getID());
+        if (queue != null) {
+          Log.debug("Sending queued packets of connection @ to room host.", Strings.conIDToString(connection));
+          for (int i=0; i<queue.length; i++) {
+            if (queue[i] != null) room.received(connection, queue[i]);
+          }
+        }
+        
       } else connection.close(DcReason.error);
 
     } else if (object instanceof ClajPackets.RoomCreateRequestPacket) {
       // Check the version of client
       String version = ((ClajPackets.RoomCreateRequestPacket)object).version;
       // Ignore the last part of version, the minor part. (versioning format: 2.major.minor)
-      // The minor part is used when no changes have been made to the client version.
+      // The minor part is used when no changes have been made to the protocol itself. (sending/receiving way)
       if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion, 2)) {
         ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
         p.message = "Your CLaJ version is outdated, please update it by reinstalling the 'claj' mod.";
@@ -150,7 +176,11 @@ public class ClajRelay extends Server implements NetListener {
       }
       
       // Ignore if the connection is already in a room or hold one
-      if (room != null) return;
+      if (room != null) {
+        Log.warn("Connection @ tried to create a room but is already hosting the room @.", 
+                 Strings.conIDToString(connection), room.idToString());
+        return;
+      }
 
       room = new ClajRoom(newRoomId(), connection);
       rooms.put(room.id, room);
@@ -159,7 +189,12 @@ public class ClajRelay extends Server implements NetListener {
 
     } else if (object instanceof ClajPackets.RoomCloseRequestPacket) {
       // Only room host can close the room
-      if (room == null || room.host != connection) return;
+      if (room == null) return;
+      if (room.host != connection) {
+        Log.warn("Connection @ tried to close the room @ but is not the host.", Strings.conIDToString(connection),
+                 room.idToString());
+        return;
+      }
 
       rooms.remove(room.id);
       room.close();
@@ -167,7 +202,13 @@ public class ClajRelay extends Server implements NetListener {
     
     } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
       // Only room host can request a connection closing
-      if (room == null || room.host != connection) return;
+      if (room == null) return;
+      if (room.host != connection) {
+        Log.warn("Connection @ tried to close the connection @ but is not the room host.", 
+                 Strings.conIDToString(connection), 
+                 Strings.conIDToString(((ClajPackets.ConnectionClosedPacket)object).conID));
+        return;
+      }
       
       int conID = ((ClajPackets.ConnectionClosedPacket)object).conID;
       Connection con = arc.util.Structs.find(getConnections(), c -> c.getID() == conID);
@@ -186,6 +227,18 @@ public class ClajRelay extends Server implements NetListener {
         notifiedIdle.remove(((ClajPackets.ConnectionWrapperPacket)object).conID);
       
       room.received(connection, object);
+      
+    // Puts in queue; if full, future packets of the connection will be ignored.
+    } else if (object instanceof ByteBuffer) {
+      ByteBuffer[] queue = packetQueue.get(connection.getID(), () -> new ByteBuffer[packetQueueMaxSize]);
+      ByteBuffer buffer = (ByteBuffer)object;
+      
+      for (int i=0; i<queue.length; i++) {
+        if (queue[i] == null) {
+          queue[i] = (ByteBuffer)ByteBuffer.allocate(buffer.remaining()).put(buffer).rewind();
+          break;
+        }
+      }
     }
   }
   
@@ -235,12 +288,12 @@ public class ClajRelay extends Server implements NetListener {
         ClajPackets.Packet packet = ClajPackets.newPacket(buffer.get());
         packet.read(new ByteBufferInput(buffer));
         if (packet instanceof ClajPackets.ConnectionPacketWrapPacket)
-          ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer = last.clear().put(buffer).flip();
+          ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer = (ByteBuffer)((ByteBuffer)last.clear()).put(buffer).flip();
         return packet;
       }
 
       // Non-claj packets are saved as raw buffer, to avoid re-serialization
-      return last.clear().put(buffer.position(buffer.position()-1)).flip();
+      return ((ByteBuffer)last.clear()).put((ByteBuffer)buffer.position(buffer.position()-1)).flip();
     }
     
     @Override

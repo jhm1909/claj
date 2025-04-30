@@ -3,7 +3,6 @@ package com.xpdustry.claj.server;
 import arc.struct.IntMap;
 import arc.struct.LongMap;
 import arc.util.Log;
-import arc.util.serialization.Base64Coder;
 
 import java.util.Scanner;
 
@@ -188,36 +187,19 @@ public class ClajControl extends arc.util.CommandHandler {
     });
     
     register("say", "<room|all> <text...>", "Send a message to a room or all rooms.", args -> {
-      if (args[0].equals("all")) {
-        for (ClajRoom r : new LongMap.Values<>(server.rooms)) r.message(args[1]);
-        Log.info("Message sent to all rooms.");
-        return;
-      }
-      
-      ClajRoom room = getRoom(server, args[0]);
-      
-      if (room == null) Log.err("Room @ not found.", args[0]);
-      else {
-        room.message(args[1]);
-        Log.info("Message sent to room @.", args[0]);
-      }
-    });
-  }
-  
-  
-  private static ClajRoom getRoom(ClajRelay server, String roomId) {
-    try { return server.get(bytesToLong(Base64Coder.decode(roomId, Base64Coder.urlsafeMap))); } 
-    catch (Exception ignored) { return null; }
-  }
-  
-  /** Copy of {@link com.xpdustry.claj.client.ClajLink#bytesToLong(byte[])} */
-  private static long bytesToLong(final byte[] b) {
-    if (b.length != Long.BYTES) throw new IndexOutOfBoundsException("must be " + Long.BYTES + " bytes");
-    long result = 0;
-    for (int i=0; i<Long.BYTES; i++) {
-        result <<= 8;
-        result |= (b[i] & 0xFF);
+        if (args[0].equals("all")) {
+          for (ClajRoom r : new LongMap.Values<>(server.rooms)) r.message(args[1]);
+          Log.info("Message sent to all rooms.");
+          return;
+        }
+        
+        try {
+          ClajRoom room = server.get(Strings.base64ToLong(args[0]));
+          if (room != null) {
+            room.message(args[1]);
+            Log.info("Message sent to room @.", args[0]);
+          } else Log.err("Room @ not found.", args[0]);
+        } catch (Exception ignored) { Log.err("Room @ not found.", args[0]); }      
+      });
     }
-    return result;
   }
-}

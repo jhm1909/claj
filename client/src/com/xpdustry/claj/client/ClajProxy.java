@@ -122,8 +122,7 @@ public class ClajProxy extends Client implements NetListener {
     roomId = -1;
     if (roomClosed != null) roomClosed.run();
     // We cannot communicate with the server anymore, so close all virtual connections
-    for (int i=0; i<orderedConnections.size; i++)
-      orderedConnections.get(i).closeQuietly(reason);
+    orderedConnections.each(c -> c.closeQuietly(reason));
     connections.clear();
     orderedConnections.clear();
   }
@@ -226,6 +225,7 @@ public class ClajProxy extends Client implements NetListener {
   
   /** We can safely remove some things,  only {@link #sendTCP(Object)} and {@link #sendUDP(Object)} are useful. */
   public static class VirtualConnection extends Connection {
+	final Seq<NetListener> listeners = new Seq<>();
     final int id;
     /** 
      * A virtual connection is always connected until we closing it, 
@@ -313,15 +313,23 @@ public class ClajProxy extends Client implements NetListener {
     @Override
     public String toString() { return "Connection " + id; }
     
+    public void addListener(NetListener listener) {
+      if(listener == null) throw new IllegalArgumentException("listener cannot be null.");
+      listeners.add(listener);
+    }
+    
+    public void removeListener(NetListener listener) {
+      if(listener == null) throw new IllegalArgumentException("listener cannot be null.");
+      listeners.remove(listener);
+    }
+    
     public void notifyConnected0() {
-      for(NetListener listener : getListeners())
-        listener.connected(this);
+      listeners.each(l -> l.connected(this));
     }
   
     public void notifyDisconnected0(DcReason reason) {
       proxy.removeConnection(this);
-      for(NetListener listener : getListeners())
-        listener.disconnected(this, reason);
+      listeners.each(l -> l.disconnected(this, reason));
     }
     
     public void setIdle() {
@@ -329,35 +337,11 @@ public class ClajProxy extends Client implements NetListener {
     }
     
     public void notifyIdle0() {
-      for(NetListener listener : getListeners()) {
-        listener.idle(this);
-        if(!isIdle()) break;
-      }
+      listeners.each(l -> isIdle(), l -> l.idle(this));
     }
     
     public void notifyReceived0(Object object) {
-      for(NetListener listener : getListeners())
-        listener.received(this, object);
-    }
-    
-    private java.lang.reflect.Field listenersField;
-    
-    
-    /** 
-     * Gets the connection listeners by using reflection.
-     * <p>
-     * TODO: very slow, needs to find another method.
-     */
-    NetListener[] getListeners() {
-      try {
-        // Cache the field for faster access
-        if (listenersField == null) {
-          listenersField = Connection.class.getDeclaredField("listeners");
-          listenersField.setAccessible(true);
-        }
-        return (NetListener[])listenersField.get(this);
-        
-      } catch (Exception e) { throw new RuntimeException(e); }
+      listeners.each(l -> l.received(this, object));
     }
   }
 }

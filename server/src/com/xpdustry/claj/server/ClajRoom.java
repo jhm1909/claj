@@ -70,6 +70,11 @@ public class ClajRoom implements NetListener {
     else clients.remove(connection.getID());
   }
   
+  /** 
+   * Wrap and re-send the packet to the host, if it come from a connection, 
+   * else un-wrap and re-send the packet to the specified connection. <br>
+   * Only {@link ClajPackets.ConnectionPacketWrapPacket} and {@link ByteBuffer} are allowed.
+   */
   @Override
   public void received(Connection connection, Object object) {
     if (closed) return;
@@ -110,6 +115,7 @@ public class ClajRoom implements NetListener {
     }
   }
   
+  /** Notify the host of an idle connection. */
   @Override
   public void idle(Connection connection) {
     if (closed) return;

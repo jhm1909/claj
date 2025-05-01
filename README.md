@@ -10,24 +10,12 @@ This is a bundled, reworked and optimized version of the [CLaJ server](https://g
 
 
 ## Mindustry v8 note
-Mindustry v8 has been released, and many changes have been made. Mods must now make changes to be compatible with this version.
+Mindustry v8 has been released, and many changes have been made. Mods must now make changes to be compatible with this version. <br>
+The mod is not officially updated to this version, at this time, but it remains compatible with it.
 
-The mod will not be updated to this version at this time, but it remains compatible with it. <br>
-For that, we needs a trick to force the minimal mindustry version. <br>
-But please note that after this, the mod will no longer be available for v7. You'll need to reinstall the mod to cancel the changes.
-<details>
-  <summary>Steps to modify the mod for Mindustry v8 compatibility:</summary>
-  
-  First, open the mods folder. You can open it from the ``Mods`` menu, click on any mod you have, and then click ``Open Folder``. After that close your game. <br>
-  Look for a file named ``claj-client.jar``, ``xpdustryclaj.zip`` or ``xpdustryclaj-v2.zip``, and open it with an archive tool like 7-zip, or extract the file. <br>
-  Next, edit the file ``mod.hjson`` by replacing the line ``minGameVersion`` with ``minGameVersion: "147"``. *(for 7-zip: ``Right Click`` and ``Edit``)* <br>
-  Then save the file, close it, accept changes for 7-zip, or re-zipping it. <br>
-  If all goes well, when you restart your game (Mindustry v8 version), the mod will be available.
-  
-  ---
-
-  Another method is to clone the repository, replace the line ``minGameVersion`` with ``minGameVersion: "147"`` in the file ``mod.hjson``, compile the mod *(see [#how-to-build](#how-to-build))*, and then copy the jar file into the mod directory.
-</details>
+To install the mod for mindustry v8, just go to the mod browser, search a mod named **'claj'**, click ``Versions``
+and install the latest version named **'CLaJ for Mindustry v8'**. <br>
+Or you can download the mod file from the [releases section](https://github.com/Xpdustry/claj/releases) of pre-releases versions and place it into the mod folder of your game.
 
 
 ## How to use

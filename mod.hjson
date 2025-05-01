@@ -11,7 +11,7 @@ CLaJ (Copy Link and Join) allow you to play with your friends just by creating a
 Please check this link for Mindustry v8 compatibility: https://github.com/xpdustry/claj#mindustry-v8-note
 '''
 version: "2.3.2"
-minGameVersion: "146"
+minGameVersion: "147"
 java: true
 hidden: true
 repo: xpdustry/claj

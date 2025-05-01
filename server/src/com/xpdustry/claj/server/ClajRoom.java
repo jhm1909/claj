@@ -11,13 +11,21 @@ import arc.struct.IntMap;
 public class ClajRoom implements NetListener {
   private boolean closed;
   
+  /** The room id */
   public final long id;
+  /** 
+   * The room id encoded in an url-safe base64 string
+   * @see com.xpdustry.claj.client.ClajLink
+   */
+  public final String idString;
+  /** The host connection of this room */
   public final Connection host;
   /** Using IntMap instead of Seq for faster search */
   public final IntMap<Connection> clients = new IntMap<>();
   
   public ClajRoom(long id, Connection host) {
     this.id = id;
+    this.idString = com.xpdustry.claj.server.util.Strings.longToBase64(id);
     this.host = host;
   }
 
@@ -159,13 +167,5 @@ public class ClajRoom implements NetListener {
     ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
     p.message = text;
     host.sendTCP(p);
-  }
-
-  /** 
-   * Encode the room id in url-safe base64 string
-   * @see com.xpdustry.claj.client.ClajLink
-   */
-  public String idToString() {
-    return com.xpdustry.claj.server.util.Strings.longToBase64(id);
   }
 }

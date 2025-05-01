@@ -244,6 +244,7 @@ public class ClajRelay extends Server implements NetListener {
     }
   }
   
+  /** Does nothing if the connection idle state has already been notified to the room host. */
   @Override
   public void idle(Connection connection) {
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;

@@ -99,7 +99,7 @@ public class ClajControl extends arc.util.CommandHandler {
       
       Log.info("Rooms: [total: @]", server.rooms.size);
       for (ClajRoom r : new LongMap.Values<>(server.rooms)) {
-        Log.info("&lk|&fr Room @:", r.idToString());
+        Log.info("&lk|&fr Room @:", r.idString);
         Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.host), Strings.getIP(r.host));
         for (arc.net.Connection c : new IntMap.Values<>(r.clients))
           Log.info("&lk| |&fr [C] Connection @&fr - @", Strings.conIDToString(c), Strings.getIP(c));

@@ -24,7 +24,7 @@ import mindustry.gen.Call;
 public class ClajProxy extends Client implements NetListener {
   public static int defaultTimeout = 5000; //ms
   /** No-op rate keeper, to avoid the player's server from life blacklisting the claj server . */
-  private static Ratekeeper noopRate = new Ratekeeper() {
+  private static final Ratekeeper noopRate = new Ratekeeper() {
     @Override
     public boolean allow(long spacing, int cap) {
       return true;
@@ -223,7 +223,7 @@ public class ClajProxy extends Client implements NetListener {
   }
  
   
-  /** We can safely remove some things,  only {@link #sendTCP(Object)} and {@link #sendUDP(Object)} are useful. */
+  /** We can safely remove things, only {@link #sendTCP(Object)} and {@link #sendUDP(Object)} are useful. */
   public static class VirtualConnection extends Connection {
 	final Seq<NetListener> listeners = new Seq<>();
     final int id;
@@ -313,11 +313,13 @@ public class ClajProxy extends Client implements NetListener {
     @Override
     public String toString() { return "Connection " + id; }
     
+    /** Only used when sending world data */
     public void addListener(NetListener listener) {
       if(listener == null) throw new IllegalArgumentException("listener cannot be null.");
       listeners.add(listener);
     }
     
+    /** Only used when sending world data */
     public void removeListener(NetListener listener) {
       if(listener == null) throw new IllegalArgumentException("listener cannot be null.");
       listeners.remove(listener);

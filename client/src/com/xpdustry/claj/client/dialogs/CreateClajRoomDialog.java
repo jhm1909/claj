@@ -100,31 +100,31 @@ public class CreateClajRoomDialog extends BaseDialog {
 
     cont.pane(hosts -> {
       //CLaJ description
-      hosts.labelWrap("@claj.manage.tip").labelAlign(2, 8).padBottom(24f).growX().row();
+      hosts.labelWrap("@claj.manage.tip").left().pad(0, 5, 24, 5).growX().row();
       
       // Custom servers
       hosts.table(table -> {
-        table.add("@claj.manage.custom-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
+        table.add("@claj.manage.custom-servers").pad(10).padLeft(0).color(Pal.accent).growX().left();
         table.button(Icon.add, Styles.emptyi, add::show).size(40f).right().padRight(3);
         table.button(Icon.refresh, Styles.emptyi, this::refreshCustom).size(40f).right().padRight(3);
         table.button(Icon.downOpen, Styles.emptyi, () -> customShown = !customShown)
-            .update(i -> i.getStyle().imageUp = !customShown ? Icon.upOpen : Icon.downOpen)
-            .size(40f).right();
-      }).growX().row();
-      hosts.image().growX().padTop(5).padBottom(5).height(3).color(Pal.accent).row();
-      hosts.collapser(table -> custom = table, false, () -> customShown).growX().padBottom(10);
+             .update(i -> i.getStyle().imageUp = !customShown ? Icon.upOpen : Icon.downOpen)
+             .size(40f).right();
+      }).pad(0, 5, 0, 5).growX().row();
+      hosts.image().pad(5).height(3).color(Pal.accent).growX().row();
+      hosts.collapser(table -> custom = table, false, () -> customShown).pad(0, 5, 10, 5).growX();
       hosts.row();
       
       // Online Public servers
       hosts.table(table -> {
-        table.add("@claj.manage.public-servers").pad(10).padLeft(0).growX().left().color(Pal.accent);
+        table.add("@claj.manage.public-servers").pad(10).padLeft(0).color(Pal.accent).growX().left();
         table.button(Icon.refresh, Styles.emptyi, this::refreshOnline).size(40f).right().padRight(3);
         table.button(Icon.downOpen, Styles.emptyi, () -> onlineShown = !onlineShown)
-            .update(i -> i.getStyle().imageUp = !onlineShown ? Icon.upOpen : Icon.downOpen)
-            .size(40f).right();
-      }).growX().row();
-      hosts.image().growX().padTop(5).padBottom(5).height(3).color(Pal.accent).row();
-      hosts.collapser(table -> online = table, false, () -> onlineShown).growX().padBottom(10);
+             .update(i -> i.getStyle().imageUp = !onlineShown ? Icon.upOpen : Icon.downOpen)
+             .size(40f).right();
+      }).pad(0, 5, 0, 5).growX().row();
+      hosts.image().pad(5).height(3).color(Pal.accent).growX().row();
+      hosts.collapser(table -> online = table, false, () -> onlineShown).pad(0, 5, 10, 5).growX();
       hosts.row();
       
       hosts.marginBottom(Vars.mobile ? 140f : 70f);

@@ -61,6 +61,11 @@ public class ClajControl extends arc.util.CommandHandler {
                  "&fr - &lw" + c.description));
     });
     
+    register("version", "Displays server version info.", arg -> {
+      Log.info("Version: @", Main.serverVersion);
+      Log.info("Java Version: @", arc.util.OS.javaVersion);
+  });
+    
     register("gc", "Trigger a garbage collection.", arg -> {
       int pre = (int)((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024);
       System.gc();

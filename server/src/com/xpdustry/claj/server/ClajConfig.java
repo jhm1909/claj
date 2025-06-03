@@ -13,7 +13,7 @@ public class ClajConfig {
   /** Debug log level enabled or not */
   public static boolean debug = false;
   /** Limit for packet count sent within 3 sec that will lead to a disconnect. Note: only for clients, not hosts. */
-  public static int spamLimit = 500;
+  public static int spamLimit = 300;
   /** Warn a client that trying to create a room, that it's CLaJ version is deprecated. */
   public static boolean warnDeprecated = true;
   /** Warn all clients when the server is closing */

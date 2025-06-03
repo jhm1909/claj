@@ -22,6 +22,7 @@ import arc.util.io.ByteBufferOutput;
 
 
 public class ClajRelay extends Server implements NetListener {
+  protected boolean closed;
   /** 
    * Keeps a cache of packets received from connections that are not yet in a room. (queue of 3 packets)<br>
    * Because sometimes {@link ClajPackets.RoomJoinPacket} comes after {@link Packets.ConnectPacket}, 
@@ -35,24 +36,32 @@ public class ClajRelay extends Server implements NetListener {
   protected final IntSet notifiedIdle = new IntSet();
   /** List of created rooms */
   public final LongMap<ClajRoom> rooms = new LongMap<>();
-
+  
   public ClajRelay() {
     super(32768, 16384, new Serializer());
     addListener(this);
   }
 
   @Override
+  public void run() {
+    closed = false;
+    super.run();
+  }
+  
+  @Override
   public void stop() {
+    closed = true;
+    
     if (ClajConfig.warnClosing && !rooms.isEmpty()) {
       Log.info("Notifying rooms that the server is closing...");
       
       try {
         // Notify all rooms that the server will be closed
         rooms.values().forEach(r -> 
-          r.message("The server is shutting down, please wait a minute or choose another server."));  
+          r.message(ClajPackets.ClajMessage2Packet.MessageType.serverClosing));  
       
         // Yea we needs a new thread... because we don't have arc.Timer
-        Threads.daemon(() -> {
+        Threads.thread(() -> {
           // Give time to message to be send to all clients
           try { Thread.sleep(2000); }
           catch (InterruptedException ignored) {}
@@ -67,15 +76,19 @@ public class ClajRelay extends Server implements NetListener {
     super.stop();
   }
   
+  public boolean isClosed() {
+    return closed;
+  }
+  
   public void closeRooms() {
-    try { rooms.values().forEach(ClajRoom::close); } 
+    try { rooms.values().forEach(r -> r.close(ClajPackets.RoomClosedPacket.CloseReason.serverClosed)); } 
     catch (Throwable ignored) {}
     rooms.clear();  
   }
   
   @Override
   public void connected(Connection connection) {
-    if (ClajConfig.blacklist.contains(Strings.getIP(connection))) {
+    if (isClosed() || ClajConfig.blacklist.contains(Strings.getIP(connection))) {
       connection.close(DcReason.closed);
       return;
     }
@@ -116,15 +129,13 @@ public class ClajRelay extends Server implements NetListener {
     // Simple packet spam protection, ignored for room hosts
     if ((room == null || room.host != connection) && 
         ClajConfig.spamLimit > 0 && !rate.allow(3000L, ClajConfig.spamLimit)) {
-      //TODO: verify that, i'm not sure it makes a difference.
-      rate.occurences = -ClajConfig.spamLimit; // reset to prevent message spam
 
       if (room != null) {
-        room.message("A client has been kicked for packets spamming.");
+        room.message(ClajPackets.ClajMessage2Packet.MessageType.packetSpamming);
         room.disconnected(connection, DcReason.closed);
       }
       connection.close(DcReason.closed);   
-      Log.warn("Connection @ disconnected for packets spamming.", Strings.conIDToString(connection));
+      Log.warn("Connection @ disconnected for packet spamming.", Strings.conIDToString(connection));
       
     // Compatibility for the xzxADIxzx's version
     } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
@@ -138,6 +149,7 @@ public class ClajRelay extends Server implements NetListener {
       if (room != null) {
         // Ignore if it's the host of another room
         if (room.host == connection) {
+          room.message(ClajPackets.ClajMessage2Packet.MessageType.alreadyHosting);
           Log.warn("Connection @ tried to join the room @ but is already hosting the room @.", 
                    Strings.conIDToString(connection), 
                    Strings.longToBase64(((ClajPackets.RoomJoinPacket)object).roomId), room.idString);
@@ -163,14 +175,23 @@ public class ClajRelay extends Server implements NetListener {
         
       } else connection.close(DcReason.error);
 
-    } else if (object instanceof ClajPackets.RoomCreateRequestPacket) {
+    } else if (object instanceof ClajPackets.RoomCreationRequestPacket) {
+      // Ignore room creation requests when the server is closing
+      if (isClosed()) {
+        ClajPackets.RoomClosedPacket p = new ClajPackets.RoomClosedPacket();
+        p.reason = ClajPackets.RoomClosedPacket.CloseReason.serverClosed;
+        connection.sendTCP(p);
+        connection.close(DcReason.closed);
+        return;
+      }
+      
       // Check the version of client
-      String version = ((ClajPackets.RoomCreateRequestPacket)object).version;
+      String version = ((ClajPackets.RoomCreationRequestPacket)object).version;
       // Ignore the last part of version, the minor part. (versioning format: 2.major.minor)
       // The minor part is used when no changes have been made to the protocol itself. (sending/receiving way)
       if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion, 2)) {
-        ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
-        p.message = "Your CLaJ version is outdated, please update it by reinstalling the 'claj' mod.";
+        ClajPackets.RoomClosedPacket p = new ClajPackets.RoomClosedPacket();
+        p.reason = ClajPackets.RoomClosedPacket.CloseReason.outdatedVersion;
         connection.sendTCP(p);
         connection.close(DcReason.error);
         Log.warn("Rejected room creation of connection @ for outdated version.", Strings.conIDToString(connection));
@@ -179,6 +200,7 @@ public class ClajRelay extends Server implements NetListener {
       
       // Ignore if the connection is already in a room or hold one
       if (room != null) {
+        room.message(ClajPackets.ClajMessage2Packet.MessageType.alreadyHosting);
         Log.warn("Connection @ tried to create a room but is already hosting the room @.", 
                  Strings.conIDToString(connection), room.idString);
         return;
@@ -189,10 +211,11 @@ public class ClajRelay extends Server implements NetListener {
       room.create();
       Log.info("Room @ created by connection @.", room.idString, Strings.conIDToString(connection));  
 
-    } else if (object instanceof ClajPackets.RoomCloseRequestPacket) {
+    } else if (object instanceof ClajPackets.RoomClosureRequestPacket) {
       // Only room host can close the room
       if (room == null) return;
       if (room.host != connection) {
+        room.message(ClajPackets.ClajMessage2Packet.MessageType.roomClosureDenied);
         Log.warn("Connection @ tried to close the room @ but is not the host.", Strings.conIDToString(connection),
                  room.idString);
         return;
@@ -206,6 +229,7 @@ public class ClajRelay extends Server implements NetListener {
       // Only room host can request a connection closing
       if (room == null) return;
       if (room.host != connection) {
+        room.message(ClajPackets.ClajMessage2Packet.MessageType.conClosureDenied);
         Log.warn("Connection @ tried to close the connection @ but is not the room host.", 
                  Strings.conIDToString(connection), 
                  Strings.conIDToString(((ClajPackets.ConnectionClosedPacket)object).conID));
@@ -230,7 +254,7 @@ public class ClajRelay extends Server implements NetListener {
       
       room.received(connection, object);
       
-    // Puts in queue; if full, future packets of the connection will be ignored.
+    // Puts in queue; if full, future packets will be ignored.
     } else if (object instanceof ByteBuffer) {
       ByteBuffer[] queue = packetQueue.get(connection.getID(), () -> new ByteBuffer[packetQueueSize]);
       ByteBuffer buffer = (ByteBuffer)object;

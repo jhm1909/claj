@@ -1,8 +1,6 @@
 package com.xpdustry.claj.client.dialogs;
 
-import com.xpdustry.claj.client.Claj;
-import com.xpdustry.claj.client.ClajLink;
-import com.xpdustry.claj.client.ClajServers;
+import com.xpdustry.claj.client.*;
 
 import arc.graphics.Color;
 import arc.scene.ui.Button;
@@ -276,11 +274,12 @@ public class CreateClajRoomDialog extends BaseDialog {
     }, e -> {
       Vars.net.handleException(e);
       t.cancel();
-    }, () -> {
+    }, r -> {
       Vars.ui.loadfrag.hide();
       t.cancel();
-      if (link == null) Vars.ui.showErrorMessage("@claj.manage.room-creation-failed");
-      else link = null;
+      if (r != null) Vars.ui.showText("", "@claj.room." + arc.util.Strings.camelToKebab(r.name()));
+      else if (link == null) Vars.ui.showErrorMessage("@claj.manage.room-creation-failed");
+      link = null;
     });
   }
   

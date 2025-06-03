@@ -10,7 +10,7 @@ CLaJ (Copy Link and Join) allow you to play with your friends just by creating a
 
 [lightgray]Note: To install on Mindustry v8, please check the 'Versions' and install the latest version named 'CLaJ for Mindustry V8'.[]
 '''
-version: "2.3.3"
+version: "2.4"
 minGameVersion: "146"
 java: true
 hidden: true

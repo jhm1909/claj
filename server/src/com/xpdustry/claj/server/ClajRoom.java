@@ -145,13 +145,21 @@ public class ClajRoom implements NetListener {
     return closed;
   }
   
+  public void close() {
+    close(ClajPackets.RoomClosedPacket.CloseReason.closed);
+  }
   /** 
    * Closes the room and disconnects the host and all clients. 
-   * The room object shouldn't be used anymore after this.
+   * The room object cannot be used anymore after this.
    */
-  public void close() {
+  public void close(ClajPackets.RoomClosedPacket.CloseReason reason) {
     if (closed) return;
     closed = true; // close before kicking connections, to avoid receiving events
+    
+    // Alert the close reason to the host
+    ClajPackets.RoomClosedPacket p = new ClajPackets.RoomClosedPacket();
+    p.reason = reason;
+    host.sendTCP(p);
     
     host.close(DcReason.closed);
     clients.values().forEach(c -> c.close(DcReason.closed));
@@ -171,6 +179,24 @@ public class ClajRoom implements NetListener {
     
     // Just send to host, it will re-send it properly to all clients
     ClajPackets.ClajMessagePacket p = new ClajPackets.ClajMessagePacket();
+    p.message = text;
+    host.sendTCP(p);
+  }
+  
+  /** Send a message the host and clients. Will be translated by the room host. */
+  public void message(ClajPackets.ClajMessage2Packet.MessageType message) {
+    if (closed) return;
+    
+    ClajPackets.ClajMessage2Packet p = new ClajPackets.ClajMessage2Packet();
+    p.message = message;
+    host.sendTCP(p);
+  }
+  
+  /** Send a popup to the room host. */
+  public void poppup(String text) {
+    if (closed) return;
+    
+    ClajPackets.ClajPopupPacket p = new ClajPackets.ClajPopupPacket();
     p.message = text;
     host.sendTCP(p);
   }

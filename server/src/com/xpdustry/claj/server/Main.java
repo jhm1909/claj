@@ -51,10 +51,11 @@ public class Main {
         serverVersion = new java.util.jar.Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"))
                                          .getMainAttributes().getValue("Claj-Version");
       } catch (Exception e) {
-        throw new RuntimeException("Unable to get the 'Claj-Version' property from the jar manifest", e);
+        throw new RuntimeException("Unable to locate manifest properties.", e);
       }
-      if (serverVersion == null) 
-        throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
+      // Fallback to java property
+      if (serverVersion == null) serverVersion = System.getProperty("Claj-Version");
+      if (serverVersion == null) throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
       
       // Load settings and init server
       ClajConfig.load();
@@ -69,6 +70,7 @@ public class Main {
 
     } catch (Throwable t) {
       Log.err("Failed to load server", t);
+      System.exit(1);
       return;
     }
     

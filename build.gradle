@@ -52,7 +52,7 @@ project(":client") {
   }
 
   mergeJar {
-    archiveFileName = "${metadata.name}-client.jar"
+    archiveFileName = "${metadata.name}-${project.name}.jar"
    
     // Includes mod json and icon
     from(rootDir) {
@@ -82,6 +82,7 @@ project(":server") {
   sourceSets.main.java.srcDirs = ["src"]
   sourceSets.main.resources.srcDirs = ["resources"]
   
+  project.ext.mainClassName = "com.xpdustry.claj.server.Main"
   toxopid.platforms = [ModPlatform.SERVER]
 
   dependencies {
@@ -91,8 +92,8 @@ project(":server") {
   }
   
   jar {
-    archiveFileName = "${metadata.name}-server.jar"
-    manifest.attributes["Main-Class"] = "com.xpdustry.claj.server.Main"
+    archiveFileName = "${metadata.name}-${project.name}.jar"
+    manifest.attributes["Main-Class"] = project.ext.mainClassName
     manifest.attributes["Claj-Version"] = metadata.version
     
     // Includes arc libs
@@ -107,5 +108,14 @@ project(":server") {
         into rootDir
       }
     }
+  }
+  
+  task run(dependsOn: classes, type: JavaExec) {
+    mainClass = project.mainClassName
+    classpath = sourceSets.main.runtimeClasspath
+    standardInput = System.in
+    workingDir = "build"
+    args 7000 // default port
+    jvmArgs "-DClaj-Version=${metadata.version}" // claj version
   }
 }

@@ -57,3 +57,5 @@ Pre-build releases can be found in the [releases section](https://github.com/Xpd
 To build the client version, simply run the command ``./gradlew client:build``. The jar file will be located in the root directory and named ``claj-client.jar``.
 
 To build the server version, simply run the command ``./gradlew server:build``. The jar file will be located in the root directory and named ``claj-server.jar``.
+
+You can also run a test server by using the command ``./gradlew server:run``. It will be hosted on port ``7000``.

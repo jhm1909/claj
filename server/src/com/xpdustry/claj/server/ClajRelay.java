@@ -271,7 +271,7 @@ public class ClajRelay extends Server implements NetListener {
       
       if (con != null) {
         Log.info("Connection @ (room @) closed the connection @.", Strings.conIDToString(connection), 
-                 Strings.conIDToString(con), room.idString);
+                 room.idString, Strings.conIDToString(con));
         room.disconnectedQuietly(con, reason);
         con.close(reason);
         // An event for this kind of thing is useless, there are #disconnected() for that

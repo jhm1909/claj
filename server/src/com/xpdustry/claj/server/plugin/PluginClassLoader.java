@@ -1,9 +1,5 @@
 package com.xpdustry.claj.server.plugin;
 
-import java.net.URL;
-import java.net.URLClassLoader;
-
-import arc.files.Fi;
 import arc.struct.Seq;
 
 
@@ -14,11 +10,7 @@ public class PluginClassLoader extends ClassLoader {
   public PluginClassLoader(ClassLoader parent) {
     super(parent);
   }
-  
-  public void loadAndAdd(Fi jar) throws Exception {
-    addChild(JarLoader.load(jar, this));
-  }
-  
+
   public void addChild(ClassLoader child) {
     children.add(child);
   }
@@ -50,27 +42,4 @@ public class PluginClassLoader extends ClassLoader {
 
     throw (last == null ? new ClassNotFoundException(name) : last);
   }
-  
-  
-  public static class JarLoader {
-    public static ClassLoader load(Fi jar, ClassLoader parent) throws Exception {
-      return new URLClassLoader(new URL[] {jar.file().toURI().toURL()}, parent){
-        @Override
-        protected Class<?> loadClass(String name, boolean resolve) throws ClassNotFoundException {
-          //check for loaded state
-          Class<?> loadedClass = findLoadedClass(name);
-          if (loadedClass == null) {
-            //try to load own class first
-            try { loadedClass = findClass(name); }
-            //use parent if not found
-            catch (ClassNotFoundException e) { return parent.loadClass(name); }
-          }
-
-          if (resolve) resolveClass(loadedClass);
-          return loadedClass;
-        }
-      };
-    }
-  }
-
 }

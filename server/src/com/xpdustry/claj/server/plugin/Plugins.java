@@ -1,6 +1,7 @@
 package com.xpdustry.claj.server.plugin;
 
 import com.xpdustry.claj.server.ClajVars;
+import com.xpdustry.claj.server.util.JarLoader;
 
 import arc.files.Fi;
 import arc.files.ZipFi;
@@ -298,7 +299,8 @@ public class Plugins {
     //make sure the main class exists before loading it; if it doesn't just don't put it there
     //if the plugin is explicitly marked as java, try loading it anyway
     if ((mainFile.exists() || meta.java) && initialize) {
-      mainLoader.loadAndAdd(sourceFile);
+      loader = JarLoader.load(sourceFile, mainLoader);
+      mainLoader.addChild(loader);
       Class<?> main = Class.forName(mainClass, true, loader);
 
       metas.put(main, meta);

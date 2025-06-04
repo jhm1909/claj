@@ -329,10 +329,9 @@ public class ClajRelay extends Server implements NetListener {
     return null;  
   }
 
-  
+
   public static class Serializer implements NetSerializer {
-    /** Since there are only one thread using the serializer, it's not necessary to use a thread-local variable. */
-    private final ByteBuffer last = ByteBuffer.allocate(16384);
+    private final ThreadLocal<ByteBuffer> last = arc.util.Threads.local(() -> ByteBuffer.allocate(16384));
     private final NetworkSpeed networkSpeed;
     private int lastPos;
     
@@ -356,12 +355,12 @@ public class ClajRelay extends Server implements NetListener {
         packet.read(new ByteBufferInput(buffer));
         if (packet instanceof ClajPackets.ConnectionPacketWrapPacket) // This one is special
           ((ClajPackets.ConnectionPacketWrapPacket)packet).buffer = 
-              (ByteBuffer)((ByteBuffer)last.clear()).put(buffer).flip();
+              (ByteBuffer)((ByteBuffer)last.get().clear()).put(buffer).flip();
         return packet;
       }
 
       // Non-claj packets are saved as raw buffer, to avoid re-serialization
-      return ((ByteBuffer)last.clear()).put((ByteBuffer)buffer.position(buffer.position()-1)).flip();
+      return ((ByteBuffer)last.get().clear()).put((ByteBuffer)buffer.position(buffer.position()-1)).flip();
     }
     
     @Override

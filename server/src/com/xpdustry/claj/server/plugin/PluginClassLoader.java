@@ -9,7 +9,7 @@ import arc.struct.Seq;
 
 public class PluginClassLoader extends ClassLoader {
   private Seq<ClassLoader> children = new Seq<>();
-  private boolean inChild = false;
+  private ThreadLocal<Boolean> inChild = arc.util.Threads.local(() -> Boolean.FALSE);
 
   public PluginClassLoader(ClassLoader parent) {
     super(parent);
@@ -26,8 +26,8 @@ public class PluginClassLoader extends ClassLoader {
   @Override
   protected Class<?> findClass(String name) throws ClassNotFoundException {
     //a child may try to delegate class loading to its parent, which is *this class loader* - do not let that happen
-    if (inChild) {
-      inChild = false;
+    if (inChild.get()) {
+      inChild.set(false);
       throw new ClassNotFoundException(name);
     }
 
@@ -38,10 +38,10 @@ public class PluginClassLoader extends ClassLoader {
     for (int i=0; i<size; i++) {
       try {
         try {
-          inChild = true;
+          inChild.set(true);
           return children.get(i).loadClass(name);
         } finally {
-          inChild = false;
+          inChild.set(false);
         }
       } catch (ClassNotFoundException e) {
           last = e;

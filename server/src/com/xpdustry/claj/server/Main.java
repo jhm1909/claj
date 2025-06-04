@@ -4,8 +4,9 @@ import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
 import com.xpdustry.claj.server.plugin.*;
+import com.xpdustry.claj.server.util.EventLoop;
+import com.xpdustry.claj.server.util.NetworkSpeed;
 
-import arc.Events;
 import arc.net.ArcNet;
 import arc.util.ColorCodes;
 import arc.util.Log;
@@ -56,10 +57,15 @@ public class Main {
       if (ClajVars.serverVersion == null) ClajVars.serverVersion = System.getProperty("Claj-Version");
       if (ClajVars.serverVersion == null) throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
       
+      // Init event loop
+      ClajVars.loop = new EventLoop();
+      ClajVars.loop.start();
+      
       // Load settings and init server
       ClajConfig.load();
       Log.level = ClajConfig.debug ? Log.LogLevel.debug : Log.LogLevel.info; // set log level
-      ClajVars.relay = new ClajRelay();      
+      ClajVars.networkSpeed = new NetworkSpeed(8);
+      ClajVars.relay = new ClajRelay(ClajVars.networkSpeed);      
       ClajVars.control = new ClajControl();
 
       // Load plugins
@@ -89,11 +95,12 @@ public class Main {
       // Start command handler
       ClajVars.control.start();
      
-      Events.fire(new ClajEvents.ServerLoadEvent());
+      ClajEvents.fire(new ClajEvents.ServerLoadEvent());
       Log.info("Server loaded and hosted on port @. Type @ for help.", port, "'help'");
       
     } catch (Throwable t) {
       Log.err("Failed to load server", t);
+      ClajVars.loop.stop(true);
       System.exit(1);
       return;
     }
@@ -102,6 +109,7 @@ public class Main {
     try { ClajVars.relay.run(); } 
     catch (Throwable t) { Log.err(t); } 
     finally {
+      ClajVars.loop.stop(true);
       ClajVars.relay.close();
       ClajConfig.save();
       Log.info("Server closed.");

@@ -2,6 +2,7 @@ package com.xpdustry.claj.server;
 
 import java.nio.ByteBuffer;
 
+import com.xpdustry.claj.server.util.NetworkSpeed;
 import com.xpdustry.claj.server.util.Strings;
 
 import arc.net.Connection;
@@ -37,8 +38,9 @@ public class ClajRelay extends Server implements NetListener {
   /** List of created rooms */
   public final LongMap<ClajRoom> rooms = new LongMap<>();
   
-  public ClajRelay() {
-    super(32768, 16384, new Serializer());
+  public ClajRelay() { this(null); }
+  public ClajRelay(NetworkSpeed speedCalculator) {
+    super(32768, 16384, new Serializer(speedCalculator));
     addListener(this);
   }
 
@@ -51,6 +53,9 @@ public class ClajRelay extends Server implements NetListener {
   @Override
   public void stop() {
     closed = true;
+    
+    // Notify stopping
+    ClajEvents.fire(new ClajEvents.ServerStoppingEvent());
     
     if (ClajConfig.warnClosing && !rooms.isEmpty()) {
       Log.info("Notifying rooms that the server is closing...");
@@ -95,6 +100,7 @@ public class ClajRelay extends Server implements NetListener {
   
     Log.debug("Connection @ received.", Strings.conIDToString(connection));
     connection.setArbitraryData(new Ratekeeper());
+    ClajEvents.fire(new ClajEvents.ClientConnectedEvent(connection));
   }
   
   @Override
@@ -115,8 +121,11 @@ public class ClajRelay extends Server implements NetListener {
         rooms.remove(room.id);
         Log.info("Room @ closed because connection @ (the host) has disconnected.", room.idString, 
                  Strings.conIDToString(connection));
+        ClajEvents.fire(new ClajEvents.RoomClosedEvent(room));
       } else Log.info("Connection @ left the room @.",  Strings.conIDToString(connection), room.idString);  
-    }      
+    }
+    
+    ClajEvents.fire(new ClajEvents.ClientDisonnectedEvent(connection, reason, room));
   }
   
   @Override
@@ -134,8 +143,10 @@ public class ClajRelay extends Server implements NetListener {
         room.message(ClajPackets.ClajMessage2Packet.MessageType.packetSpamming);
         room.disconnected(connection, DcReason.closed);
       }
+      
       connection.close(DcReason.closed);   
       Log.warn("Connection @ disconnected for packet spamming.", Strings.conIDToString(connection));
+      ClajEvents.fire(new ClajEvents.ClientKickedEvent(connection));
       
     // Compatibility for the xzxADIxzx's version
     } else if ((object instanceof String) && ClajConfig.warnDeprecated) {
@@ -143,6 +154,7 @@ public class ClajRelay extends Server implements NetListener {
                        + "installing the 'claj' mod, in the mod browser.");
       connection.close(DcReason.error);
       Log.warn("Rejected room creation of connection @ for incompatible version.", Strings.conIDToString(connection));
+      ClajEvents.fire(new ClajEvents.RoomCreationRejectedEvent(connection, ClajPackets.RoomClosedPacket.CloseReason.obsoleteClient));
       
     } else if (object instanceof ClajPackets.RoomJoinPacket) {
       // Disconnect from a potential another room.
@@ -153,6 +165,7 @@ public class ClajRelay extends Server implements NetListener {
           Log.warn("Connection @ tried to join the room @ but is already hosting the room @.", 
                    Strings.conIDToString(connection), 
                    Strings.longToBase64(((ClajPackets.RoomJoinPacket)object).roomId), room.idString);
+          ClajEvents.fire(new ClajEvents.ActionDeniedEvent(connection, ClajPackets.ClajMessage2Packet.MessageType.alreadyHosting));
           return;
         }
         room.disconnected(connection, DcReason.closed);
@@ -172,7 +185,9 @@ public class ClajRelay extends Server implements NetListener {
           }
         }
         
-      //TODO: make a limit to avoid room searching; if more than 100 in one minute, ignore request for 10 min
+        ClajEvents.fire(new ClajEvents.ConnectionJoinedEvent(connection, room));
+        
+      //TODO: make a limit to avoid room searching; e.g. if more than 100 in one minute, ignore request for 10 min
       } else connection.close(DcReason.error);
 
     } else if (object instanceof ClajPackets.RoomCreationRequestPacket) {
@@ -181,7 +196,8 @@ public class ClajRelay extends Server implements NetListener {
         ClajPackets.RoomClosedPacket p = new ClajPackets.RoomClosedPacket();
         p.reason = ClajPackets.RoomClosedPacket.CloseReason.serverClosed;
         connection.sendTCP(p);
-        connection.close(DcReason.closed);
+        connection.close(DcReason.error);
+        ClajEvents.fire(new ClajEvents.RoomCreationRejectedEvent(connection, p.reason));
         return;
       }
       
@@ -195,6 +211,7 @@ public class ClajRelay extends Server implements NetListener {
         connection.sendTCP(p);
         connection.close(DcReason.error);
         Log.warn("Rejected room creation of connection @ for outdated version.", Strings.conIDToString(connection));
+        ClajEvents.fire(new ClajEvents.RoomCreationRejectedEvent(connection, p.reason));
         return;
       }
       
@@ -203,13 +220,15 @@ public class ClajRelay extends Server implements NetListener {
         room.message(ClajPackets.ClajMessage2Packet.MessageType.alreadyHosting);
         Log.warn("Connection @ tried to create a room but is already hosting the room @.", 
                  Strings.conIDToString(connection), room.idString);
+        ClajEvents.fire(new ClajEvents.ActionDeniedEvent(connection, ClajPackets.ClajMessage2Packet.MessageType.alreadyHosting));
         return;
       }
 
       room = new ClajRoom(newRoomId(), connection);
       rooms.put(room.id, room);
       room.create();
-      Log.info("Room @ created by connection @.", room.idString, Strings.conIDToString(connection));  
+      Log.info("Room @ created by connection @.", room.idString, Strings.conIDToString(connection));
+      ClajEvents.fire(new ClajEvents.RoomCreatedEvent(room));
 
     } else if (object instanceof ClajPackets.RoomClosureRequestPacket) {
       // Only room host can close the room
@@ -218,21 +237,24 @@ public class ClajRelay extends Server implements NetListener {
         room.message(ClajPackets.ClajMessage2Packet.MessageType.roomClosureDenied);
         Log.warn("Connection @ tried to close the room @ but is not the host.", Strings.conIDToString(connection),
                  room.idString);
+        ClajEvents.fire(new ClajEvents.ActionDeniedEvent(connection, ClajPackets.ClajMessage2Packet.MessageType.roomClosureDenied));
         return;
       }
 
       rooms.remove(room.id);
       room.close();
       Log.info("Room @ closed by connection @ (the host).", room.idString, Strings.conIDToString(connection));
+      ClajEvents.fire(new ClajEvents.RoomClosedEvent(room));
     
     } else if (object instanceof ClajPackets.ConnectionClosedPacket) {
       // Only room host can request a connection closing
       if (room == null) return;
       if (room.host != connection) {
         room.message(ClajPackets.ClajMessage2Packet.MessageType.conClosureDenied);
-        Log.warn("Connection @ tried to close the connection @ but is not the room host.", 
+        Log.warn("Connection @ tried to close the connection @ but is not the host of room @.", 
                  Strings.conIDToString(connection), 
-                 Strings.conIDToString(((ClajPackets.ConnectionClosedPacket)object).conID));
+                 Strings.conIDToString(((ClajPackets.ConnectionClosedPacket)object).conID), room.idString);
+        ClajEvents.fire(new ClajEvents.ActionDeniedEvent(connection, ClajPackets.ClajMessage2Packet.MessageType.conClosureDenied));
         return;
       }
       
@@ -240,11 +262,19 @@ public class ClajRelay extends Server implements NetListener {
       Connection con = arc.util.Structs.find(getConnections(), c -> c.getID() == conID);
       DcReason reason = ((ClajPackets.ConnectionClosedPacket)object).reason;
       
+      // Ignore when trying to close itself or closing one that not in the same room
+      if (con == connection || !room.contains(con)) {
+        Log.warn("Connection @ (room @) tried to close a connection from another room.", 
+                 Strings.conIDToString(connection), room.idString);
+        return;
+      }
+      
       if (con != null) {
-        Log.info("Connection @ (the room host) closed the connection @.", Strings.conIDToString(connection), 
-                 Strings.conIDToString(con));
+        Log.info("Connection @ (room @) closed the connection @.", Strings.conIDToString(connection), 
+                 Strings.conIDToString(con), room.idString);
         room.disconnectedQuietly(con, reason);
         con.close(reason);
+        // An event for this kind of thing is useless, there are #disconnected() for that
       }
       
     // Ignore if the connection is not in a room
@@ -253,6 +283,8 @@ public class ClajRelay extends Server implements NetListener {
         notifiedIdle.remove(((ClajPackets.ConnectionWrapperPacket)object).conID);
       
       room.received(connection, object);
+      // Can be used to make metrics about rooms activity
+      ClajEvents.fire(new ClajEvents.PacketTransmittedEvent(connection, room));
       
     // Puts in queue; if full, future packets will be ignored.
     } else if (object instanceof ByteBuffer) {
@@ -300,10 +332,18 @@ public class ClajRelay extends Server implements NetListener {
   
   public static class Serializer implements NetSerializer {
     /** Since there are only one thread using the serializer, it's not necessary to use a thread-local variable. */
-    private ByteBuffer last = ByteBuffer.allocate(16384);
+    private final ByteBuffer last = ByteBuffer.allocate(16384);
+    private final NetworkSpeed networkSpeed;
+    private int lastPos;
+    
+    public Serializer(NetworkSpeed networkSpeed) {
+      this.networkSpeed = networkSpeed;
+    }
     
     @Override
     public Object read(ByteBuffer buffer) {
+      if (networkSpeed != null) networkSpeed.addDownloadMark(buffer.remaining());
+      
       byte id = buffer.get();
 
       if (id == -2/*framework id*/) return readFramework(buffer);
@@ -326,6 +366,8 @@ public class ClajRelay extends Server implements NetListener {
     
     @Override
     public void write(ByteBuffer buffer, Object object) {
+      if (networkSpeed != null) lastPos = buffer.position();
+      
       if (object instanceof ByteBuffer) {
         buffer.put((ByteBuffer)object);
           
@@ -345,6 +387,8 @@ public class ClajRelay extends Server implements NetListener {
         if (packet instanceof ClajPackets.ConnectionPacketWrapPacket) // This one is special
           buffer.put(((ClajPackets.ConnectionPacketWrapPacket)packet).buffer);
       }
+      
+      if (networkSpeed != null) networkSpeed.addUploadMark(buffer.position() - lastPos);
     }
 
     public void writeFramework(ByteBuffer buffer, FrameworkMessage message) {

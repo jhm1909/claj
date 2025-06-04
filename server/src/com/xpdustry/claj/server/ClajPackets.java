@@ -139,8 +139,13 @@ public class ClajPackets {
   
   public static class RoomClosedPacket extends Packet {
     public static enum CloseReason {
+      /** Closed without reason */
       closed,
+      /** Incompatible claj client */
+      obsoleteClient, 
+      /** Old claj version */
       outdatedVersion,
+      /** Server is shutting down */
       serverClosed;
       
       public static final CloseReason[] all = values();

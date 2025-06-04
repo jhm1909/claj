@@ -92,10 +92,11 @@ public class Main {
       
       // Bind port
       ClajVars.relay.bind(port, port);
+      
       // Start command handler
       ClajVars.control.start();
      
-      ClajEvents.fire(new ClajEvents.ServerLoadEvent());
+      ClajEvents.fire(new ClajEvents.ServerLoadedEvent());
       Log.info("Server loaded and hosted on port @. Type @ for help.", port, "'help'");
       
     } catch (Throwable t) {

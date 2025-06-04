@@ -65,7 +65,7 @@ public class ClajRelay extends Server implements NetListener {
         rooms.values().forEach(r -> 
           r.message(ClajPackets.ClajMessage2Packet.MessageType.serverClosing));  
       
-        // Yea we needs a new thread... because we don't have arc.Timer
+        // Yea we needs a new thread... because we can't uses arc.util.Timer
         Threads.thread(() -> {
           // Give time to message to be send to all clients
           try { Thread.sleep(2000); }
@@ -274,7 +274,7 @@ public class ClajRelay extends Server implements NetListener {
                  room.idString, Strings.conIDToString(con));
         room.disconnectedQuietly(con, reason);
         con.close(reason);
-        // An event for this kind of thing is useless, there are #disconnected() for that
+        // An event for this is useless, #disconnected() will trigger it
       }
       
     // Ignore if the connection is not in a room

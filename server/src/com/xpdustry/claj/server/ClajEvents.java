@@ -24,7 +24,7 @@ public class ClajEvents {
   }
   
   
-  public static class ServerLoadEvent {}
+  public static class ServerLoadedEvent {}
   public static class ServerStoppingEvent {}
   
   public static class ClientConnectedEvent {

@@ -6,14 +6,21 @@ import arc.util.Log;
 
 import java.util.Scanner;
 
+import com.xpdustry.claj.server.plugin.Plugins;
 import com.xpdustry.claj.server.util.Strings;
 
 
 public class ClajControl extends arc.util.CommandHandler {
-  public ClajControl(ClajRelay server) {
+  public ClajControl() {
     super("");
-    registerCommands(server);
-    
+
+    // Why the JVM throwing me a NoClassDefFoundError when i stop the server, if i remove that?
+    ResponseType.values();
+    new CommandResponse(null, null, null);
+  }
+  
+  /** Start a new daemon thread listening {@link System#in} for commands. */
+  public void start() {
     arc.util.Threads.daemon("Server Control", () -> {
       try (Scanner scanner = new Scanner(System.in)) {
         while (scanner.hasNext()) {
@@ -22,10 +29,6 @@ public class ClajControl extends arc.util.CommandHandler {
         }
       }
     });
-    
-    // Why the JVM throwing me a NoClassDefFoundError when i stop the server, if i remove that?
-    ResponseType.values();
-    new CommandResponse(null, null, null);
   }
 
   public void handleCommand(String line){
@@ -53,7 +56,7 @@ public class ClajControl extends arc.util.CommandHandler {
   }
 
 
-  void registerCommands(ClajRelay server) {
+  public void registerCommands() {
     register("help", "Display the command list.", args -> {
       Log.info("Commands:");
       getCommandList().each(c -> 
@@ -62,9 +65,9 @@ public class ClajControl extends arc.util.CommandHandler {
     });
     
     register("version", "Displays server version info.", arg -> {
-      Log.info("Version: @", Main.serverVersion);
+      Log.info("Version: @", ClajVars.serverVersion);
       Log.info("Java Version: @", arc.util.OS.javaVersion);
-  });
+    });
     
     register("gc", "Trigger a garbage collection.", arg -> {
       int pre = (int)((Runtime.getRuntime().totalMemory() - Runtime.getRuntime().freeMemory()) / 1024 / 1024);
@@ -75,7 +78,30 @@ public class ClajControl extends arc.util.CommandHandler {
     
     register("exit", "Stop the server.", args -> {
       Log.info("Shutting down CLaJ server.");
-      server.stop();
+      ClajVars.relay.stop();
+    });
+
+    register("plugins", "[name...]", "Display all loaded plugins or information about a specific one.", args -> {
+      if (args.length == 0) {
+         if (!ClajVars.plugins.list().isEmpty()) {
+          Log.info("Plugins: [total: @]", ClajVars.plugins.list().size);
+          for (Plugins.LoadedPlugin plugin : ClajVars.plugins.list())
+            Log.info("  @ &fi@ " + (plugin.enabled() ? "" : " &lr(" + plugin.state + ")"), plugin.meta.displayName, plugin.meta.version);
+
+        } else Log.info("No plugins found.");
+        Log.info("Plugin directory: &fi@", ClajVars.pluginsDirectory.file().getAbsoluteFile().toString());
+        
+      } else {
+        Plugins.LoadedPlugin plugin = ClajVars.plugins.list().find(p -> p.meta.name.equalsIgnoreCase(args[0]));
+        if (plugin != null) {
+            Log.info("Name: @", plugin.meta.displayName);
+            Log.info("Internal Name: @", plugin.name);
+            Log.info("Version: @", plugin.meta.version);
+            Log.info("Author: @", plugin.meta.author);
+            Log.info("Path: @", plugin.file.path());
+            Log.info("Description: @", plugin.meta.description);
+        } else Log.info("No mod with name '@' found.", args[0]);
+      }
     });
     
     register("debug", "[on|off]", "Enable/Disable the debug log level.", args -> {
@@ -97,13 +123,13 @@ public class ClajControl extends arc.util.CommandHandler {
     });
 
     register("rooms", "Displays created rooms.", args -> {
-      if (server.rooms.isEmpty()) {
+      if (ClajVars.relay.rooms.isEmpty()) {
         Log.info("No created rooms.");
         return;
       }
       
-      Log.info("Rooms: [total: @]", server.rooms.size);
-      for (ClajRoom r : new LongMap.Values<>(server.rooms)) {
+      Log.info("Rooms: [total: @]", ClajVars.relay.rooms.size);
+      for (ClajRoom r : new LongMap.Values<>(ClajVars.relay.rooms)) {
         Log.info("&lk|&fr Room @:", r.idString);
         Log.info("&lk| |&fr [H] Connection @&fr - @", Strings.conIDToString(r.host), Strings.getIP(r.host));
         for (arc.net.Connection c : new IntMap.Values<>(r.clients))
@@ -116,6 +142,7 @@ public class ClajControl extends arc.util.CommandHandler {
       if (args.length == 0) {
         if (ClajConfig.spamLimit == 0) Log.info("Current limit: disabled.");
         else Log.info("Current limit: @ packets per 3 seconds.", ClajConfig.spamLimit);
+        
       } else {
         int limit = Strings.parseInt(args[0]);
         if (limit < 0) {
@@ -192,19 +219,35 @@ public class ClajControl extends arc.util.CommandHandler {
     });
     
     register("say", "<room|all> <text...>", "Send a message to a room or all rooms.", args -> {
-        if (args[0].equals("all")) {
-          for (ClajRoom r : new LongMap.Values<>(server.rooms)) r.message(args[1]);
-          Log.info("Message sent to all rooms.");
-          return;
-        }
-        
-        try {
-          ClajRoom room = server.get(Strings.base64ToLong(args[0]));
-          if (room != null) {
-            room.message(args[1]);
-            Log.info("Message sent to room @.", args[0]);
-          } else Log.err("Room @ not found.", args[0]);
-        } catch (Exception ignored) { Log.err("Room @ not found.", args[0]); }      
-      });
-    }
+      if (args[0].equals("all")) {
+        for (ClajRoom r : new LongMap.Values<>(ClajVars.relay.rooms)) r.message(args[1]);
+        Log.info("Message sent to all rooms.");
+        return;
+      }
+      
+      try {
+        ClajRoom room = ClajVars.relay.get(Strings.base64ToLong(args[0]));
+        if (room != null) {
+          room.message(args[1]);
+          Log.info("Message sent to room @.", args[0]);
+        } else Log.err("Room @ not found.", args[0]);
+      } catch (Exception ignored) { Log.err("Room @ not found.", args[0]); }      
+    });
+    
+    register("alert", "<room|all> <text...>", "Send a popup message to the host of a room or all rooms.", args -> {
+      if (args[0].equals("all")) {
+        for (ClajRoom r : new LongMap.Values<>(ClajVars.relay.rooms)) r.popup(args[1]);
+        Log.info("Popup sent to all room hosts.");
+        return;
+      }
+      
+      try {
+        ClajRoom room = ClajVars.relay.get(Strings.base64ToLong(args[0]));
+        if (room != null) {
+          room.popup(args[1]);
+          Log.info("Popup sent to the host of room @.", args[0]);
+        } else Log.err("Room @ not found.", args[0]);
+      } catch (Exception ignored) { Log.err("Room @ not found.", args[0]); }   
+    });
   }
+}

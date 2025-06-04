@@ -159,7 +159,6 @@ public class ClajRelay extends Server implements NetListener {
       }
 
       room = get(((ClajPackets.RoomJoinPacket)object).roomId);
-      
       if (room != null) {
         room.connected(connection);
         Log.info("Connection @ joined the room @.", Strings.conIDToString(connection), room.idString);
@@ -173,6 +172,7 @@ public class ClajRelay extends Server implements NetListener {
           }
         }
         
+      //TODO: make a limit to avoid room searching; if more than 100 in one minute, ignore request for 10 min
       } else connection.close(DcReason.error);
 
     } else if (object instanceof ClajPackets.RoomCreationRequestPacket) {
@@ -189,7 +189,7 @@ public class ClajRelay extends Server implements NetListener {
       String version = ((ClajPackets.RoomCreationRequestPacket)object).version;
       // Ignore the last part of version, the minor part. (versioning format: 2.major.minor)
       // The minor part is used when no changes have been made to the protocol itself. (sending/receiving way)
-      if (version == null || Strings.isVersionAtLeast(version, Main.serverVersion, 2)) {
+      if (version == null || Strings.isVersionAtLeast(version, ClajVars.serverVersion, 2)) {
         ClajPackets.RoomClosedPacket p = new ClajPackets.RoomClosedPacket();
         p.reason = ClajPackets.RoomClosedPacket.CloseReason.outdatedVersion;
         connection.sendTCP(p);

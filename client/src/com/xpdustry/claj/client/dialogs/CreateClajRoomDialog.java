@@ -139,8 +139,8 @@ public class CreateClajRoomDialog extends BaseDialog {
                   .disabled(button -> !Vars.net.server()).row();
         return;
         
-      // Makes a compatilibity for foo's client users, by
-      // checking the hosting button, it's colspan is normally 2 on vanilla.
+      // Makes a compatilibity for foo's client users, by checking 
+      // the hosting button; colspan is normally 2 on vanilla.
       // Also there is no way to get this property, so we need reflection.
       } else if (arc.util.Reflect.<Integer>get(buttons.get(buttons.size-2), "colspan") == 2) 
         root.row().button("@claj.manage.name", Icon.planet, this::show).colspan(2).width(450f)
@@ -265,8 +265,8 @@ public class CreateClajRoomDialog extends BaseDialog {
     
     Vars.ui.loadfrag.show("@claj.manage.creating-room");
     link = null;
-    // Disconnect the client if the room is not created until 7 seconds
-    Timer.Task t = Timer.schedule(Claj::closeRoom, 7);
+    // Disconnect the client if the room is not created until 10 seconds
+    Timer.Task t = Timer.schedule(Claj::closeRoom, 10);
     Claj.createRoom(selected.ip, selected.port, l -> {
       Vars.ui.loadfrag.hide();
       t.cancel();

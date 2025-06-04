@@ -193,7 +193,7 @@ public class ClajRoom implements NetListener {
   }
   
   /** Send a popup to the room host. */
-  public void poppup(String text) {
+  public void popup(String text) {
     if (closed) return;
     
     ClajPackets.ClajPopupPacket p = new ClajPackets.ClajPopupPacket();

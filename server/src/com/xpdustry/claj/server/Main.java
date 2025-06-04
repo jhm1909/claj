@@ -3,6 +3,9 @@ package com.xpdustry.claj.server;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 
+import com.xpdustry.claj.server.plugin.*;
+
+import arc.Events;
 import arc.net.ArcNet;
 import arc.util.ColorCodes;
 import arc.util.Log;
@@ -14,10 +17,6 @@ public class Main {
   static final DateTimeFormatter dateformat = DateTimeFormatter.ofPattern("dd-MM-yyyy HH:mm:ss");
   static final String logFormat = "&lk&fb[@]&fr @ @&fr";
 
-  public static ClajRelay relay;
-  public static ClajControl control;
-  public static String serverVersion;
-  
   public static void main(String[] args) {
     try {
       // Ignore connection reset, closed and broken errors
@@ -46,39 +45,64 @@ public class Main {
       int port = Integer.parseInt(args[0]);
       if (port < 0 || port > 0xffff) throw new RuntimeException("Invalid port range");
       
-      // Get the server version from manifest
+      // Get the server version from manifest or command line property
       try { 
-        serverVersion = new java.util.jar.Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"))
+        ClajVars.serverVersion = new java.util.jar.Manifest(Main.class.getResourceAsStream("/META-INF/MANIFEST.MF"))
                                          .getMainAttributes().getValue("Claj-Version");
       } catch (Exception e) {
         throw new RuntimeException("Unable to locate manifest properties.", e);
       }
       // Fallback to java property
-      if (serverVersion == null) serverVersion = System.getProperty("Claj-Version");
-      if (serverVersion == null) throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
+      if (ClajVars.serverVersion == null) ClajVars.serverVersion = System.getProperty("Claj-Version");
+      if (ClajVars.serverVersion == null) throw new RuntimeException("The 'Claj-Version' property is missing in the jar manifest.");
       
       // Load settings and init server
       ClajConfig.load();
       Log.level = ClajConfig.debug ? Log.LogLevel.debug : Log.LogLevel.info; // set log level
-      relay = new ClajRelay();
-      try { relay.bind(port, port); } 
-      catch (Exception e) { throw new RuntimeException(e); }
-      // Register commands
-      control = new ClajControl(relay);
-      
-      Log.info("Server loaded and hosted on port @. Type @ for help.", port, "'help'");    
+      ClajVars.relay = new ClajRelay();      
+      ClajVars.control = new ClajControl();
 
+      // Load plugins
+      ClajVars.plugins = new Plugins();
+      ClajVars.pluginsDirectory.mkdirs();
+      ClajVars.plugins.load();
+
+      // Register commands
+      ClajVars.control.registerCommands();
+      ClajVars.plugins.eachClass(p -> p.registerCommands(ClajVars.control));
+      
+      // Check loaded plugins
+      if (!ClajVars.plugins.orderedPlugins().isEmpty())
+        Log.info("@ plugins loaded.", ClajVars.plugins.orderedPlugins().size);
+      int unsupported = ClajVars.plugins.list().count(l -> !l.enabled());
+      if (unsupported > 0) {
+        Log.err("There were errors loading @ plugin(s):", unsupported);
+        for (Plugins.LoadedPlugin mod : ClajVars.plugins.list().select(l -> !l.enabled()))
+            Log.err("- @ &ly(" + mod.state + ")", mod.meta.name);
+      }
+
+      // Finish plugins loading
+      ClajVars.plugins.eachClass(Plugin::init);
+      
+      // Bind port
+      ClajVars.relay.bind(port, port);
+      // Start command handler
+      ClajVars.control.start();
+     
+      Events.fire(new ClajEvents.ServerLoadEvent());
+      Log.info("Server loaded and hosted on port @. Type @ for help.", port, "'help'");
+      
     } catch (Throwable t) {
       Log.err("Failed to load server", t);
       System.exit(1);
       return;
     }
-    
+
     // Start the server
-    try { relay.run(); } 
+    try { ClajVars.relay.run(); } 
     catch (Throwable t) { Log.err(t); } 
     finally {
-      relay.close();
+      ClajVars.relay.close();
       ClajConfig.save();
       Log.info("Server closed.");
     }

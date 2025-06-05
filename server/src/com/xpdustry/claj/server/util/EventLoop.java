@@ -1,5 +1,7 @@
 package com.xpdustry.claj.server.util;
 
+import arc.func.Cons;
+import arc.util.Log;
 import arc.util.TaskQueue;
 
 
@@ -7,6 +9,8 @@ import arc.util.TaskQueue;
 public class EventLoop {
   protected final TaskQueue queue = new TaskQueue();
   protected Thread thread;
+  protected boolean started;
+  public Cons<Throwable> errorHandler = Log::err;
 
   public EventLoop() {
     this(false);
@@ -15,10 +19,12 @@ public class EventLoop {
   public EventLoop(boolean daemon) {
     thread = new Thread(this::mainLoop, "EventLoop");
     thread.setDaemon(daemon);
+    thread.setUncaughtExceptionHandler((t, e) -> Log.err(t.getName(), e));
   }
 
   protected synchronized void mainLoop() {
     try {
+      started = true;
       while (!thread.isInterrupted()) {
         wait();
         run();
@@ -33,11 +39,19 @@ public class EventLoop {
   
   /** Post a task in the event loop. */
   public synchronized void post(Runnable task) {
-    if (thread.isInterrupted()) throw new IllegalStateException("event loop is has been stopped.");
-    if (!thread.isAlive()) throw new IllegalStateException("event loop not started; please use #start() before.");
-    
+    if (!started) throw new IllegalStateException("event loop not started; please use #start() before.");
+    if (!thread.isAlive()) throw new IllegalStateException("event loop is not running.");
+   
     queue.post(task);
     notify();
+  }
+  
+  /** Same as {@link #post(Runnable)} but catch errors instead of crashing the event loop */
+  public void postSafe(Runnable task) {
+    post(() -> {
+      try { task.run(); }
+      catch (Exception e) { errorHandler.get(e); }
+    });
   }
   
   /** Starts the event loop thread. */

@@ -5,22 +5,13 @@ import arc.net.Connection;
 import arc.net.DcReason;
 
 public class ClajEvents {
-  /** 
-   * Fire an event to the {@link ClajVars#loop}. <br>
-   * Do nothing if {@link ClajVars#loop} is {@code null} or not started.
-   */
+  /** Fire an event to the {@link ClajVars#loop}.Do nothing if {@link ClajVars#loop} is {@code null} or not started. */
   public static <T> void fire(T type) {
-    if (ClajVars.loop == null || !ClajVars.loop.running()) return;
-    ClajVars.loop.post(() -> Events.fire(type));
+    ClajVars.loop.postSafe(() -> Events.fire(type));
   }
-  
-  /** 
-   * Fire an event to the {@link ClajVars#loop}. <br>
-   * Do nothing if {@link ClajVars#loop} is {@code null} or not started.
-   */
+  /** Fire an event to the {@link ClajVars#loop}. */
   public static <T> void fire(Class<?> ctype, T type) {
-    if (ClajVars.loop == null || !ClajVars.loop.running()) return;
-    ClajVars.loop.post(() -> Events.fire(ctype, type));
+    ClajVars.loop.postSafe(() -> Events.fire(ctype, type));
   }
   
   

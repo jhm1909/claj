@@ -298,7 +298,7 @@ public class Plugins {
 
     //make sure the main class exists before loading it; if it doesn't just don't put it there
     //if the plugin is explicitly marked as java, try loading it anyway
-    if ((mainFile.exists() || meta.java) && initialize) {
+    if (mainFile.exists() && initialize) {
       loader = JarLoader.load(sourceFile, mainLoader);
       mainLoader.addChild(loader);
       Class<?> main = Class.forName(mainClass, true, loader);
@@ -323,8 +323,8 @@ public class Plugins {
     public final Fi file;
     /** The root zip file; points to the contents of this plugin. In the case of folders, this is the same as the plugin's file. */
     public final Fi root;
-    /** The plugin's main class; may be null. */
-    public final @Nullable Plugin main;
+    /** The plugin's main class. */
+    public final Plugin main;
     /** Internal plugin name. Used for textures. */
     public final String name;
     /** This plugin's metadata. */
@@ -335,8 +335,8 @@ public class Plugins {
     public Seq<String> missingDependencies = new Seq<>();
     /** Current state of this plugin. */
     public PluginState state = PluginState.enabled;
-    /** Class loader for JAR plugins. Null if the plugin isn't loaded or this isn't a jar plugin. */
-    public @Nullable ClassLoader loader;
+    /** Class loader for JAR plugins. */
+    public ClassLoader loader;
 
     public LoadedPlugin(Fi file, Fi root, Plugin main, ClassLoader loader, PluginMeta meta) {
       this.root = root;
@@ -345,11 +345,6 @@ public class Plugins {
       this.main = main;
       this.meta = meta;
       this.name = meta.name.toLowerCase().replace(" ", "-");
-    }
-
-    /** @return whether this is a java class plugin. */
-    public boolean isJava() {
-      return meta.java || main != null;
     }
 
     @Nullable
@@ -381,16 +376,11 @@ public class Plugins {
     public String name;
     /** Name without spaces in all lower case. */
     public String internalName;
-    public @Nullable String displayName, author, description, subtitle, version, main, repo;
-    public Seq<String> dependencies = Seq.with();
-    public Seq<String> softDependencies = Seq.with();
-    /** If true, this plugin should be loaded as a Java class plugin. This is technically optional, but highly recommended. */
-    public boolean java;
-
-    public String displayName() {
-      //useless, kept for legacy reasons
-      return displayName;
-    }
+    public @Nullable String displayName, author, description, version, repo;
+    /** Plugin's main class. */
+    public String main;
+    public Seq<String> dependencies = new Seq<>();
+    public Seq<String> softDependencies = new Seq<>();
 
     //removes all colors
     public void cleanup() {
@@ -399,7 +389,6 @@ public class Plugins {
       if(displayName == null) displayName = name;
       if(author != null) author = Strings.stripColors(author);
       if(description != null) description = Strings.stripColors(description);
-      if(subtitle != null) subtitle = Strings.stripColors(subtitle).replace("\n", "");
       if(name != null) internalName = name.toLowerCase().replace(" ", "-");
     }
 
@@ -410,13 +399,11 @@ public class Plugins {
              ", displayName='" + displayName + '\'' +
              ", author='" + author + '\'' +
              ", description='" + description + '\'' +
-             ", subtitle='" + subtitle + '\'' +
              ", version='" + version + '\'' +
              ", main='" + main + '\'' +
              ", repo='" + repo + '\'' +
              ", dependencies=" + dependencies +
              ", softDependencies=" + softDependencies +
-             ", java=" + java +
              '}';
     }
   }

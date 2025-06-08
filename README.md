@@ -13,7 +13,7 @@ This is a bundled, reworked and optimized version of the [CLaJ server](https://g
 Mindustry v8 has been released, and many changes have been made. Mods must now make changes to be compatible with this version. <br>
 The mod is not officially updated to this version, at this time, but it remains compatible with it.
 
-To install the mod for mindustry v8, just go to the mod browser, search a mod named **'claj'**, click ``View Releases``
+To install the mod for mindustry v8, just go to the mod browser, search for **'claj'**, then click ``View Releases``
 and install the latest version named **'CLaJ for Mindustry v8'**. <br>
 Or you can download the mod file from the [releases section](https://github.com/Xpdustry/claj/releases) of pre-releases versions and place it into the mod folder of your game.
 
@@ -59,3 +59,11 @@ To build the client version, simply run the command ``./gradlew client:build``. 
 To build the server version, simply run the command ``./gradlew server:build``. The jar file will be located in the root directory and named ``claj-server.jar``.
 
 You can also run a test server by using the command ``./gradlew server:run``. It will be hosted on port ``7000``.
+
+
+## Modding
+The CLaJ server can be modded using plugins that are located in the ``plugins/`` directory. <br>
+They work the same way as [Mindustry mods](https://mindustrygame.github.io/wiki/modding/2-plugins/), but only handles Java ones (not json and js) and doesn't handles sprites, icon, bundles, and others things designed for client-side.
+
+The descriptor file can therefore only be ``plugin.json`` or ``plugin.hjson``, and some properties are removed, such as ``java`` because these can only be 	Java plugins, or ``texturescale`` because there is no texture handling on servers. <br>
+Supported plugin properties: ``name``, ``internalName``, ``displayName``, ``author``, ``description``, ``version``, ``repo``, ``main``, ``dependencies`` and ``softDependencies``.

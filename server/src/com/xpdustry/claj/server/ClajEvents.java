@@ -98,14 +98,4 @@ public class ClajEvents {
       this.reason = reason;
     }
   }
-  
-  public static class PacketTransmittedEvent {
-    public final Connection connection;
-    public final ClajRoom room;
-    
-    public PacketTransmittedEvent(Connection connection, ClajRoom room) {
-      this.connection = connection;
-      this.room = room;
-    }
-  }
 }

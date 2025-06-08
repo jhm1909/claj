@@ -2,6 +2,8 @@ package com.xpdustry.claj.server;
 
 import java.nio.ByteBuffer;
 
+import com.xpdustry.claj.server.util.NetworkSpeed;
+
 import arc.net.Connection;
 import arc.net.DcReason;
 import arc.net.NetListener;
@@ -22,7 +24,9 @@ public class ClajRoom implements NetListener {
   public final Connection host;
   /** Using IntMap instead of Seq for faster search */
   public final IntMap<Connection> clients = new IntMap<>();
-  
+  /** For debugging, to know how many packets were transferred from a client to a host, and vice versa. */
+  public final NetworkSpeed transferredPackets = new NetworkSpeed(8);
+
   public ClajRoom(long id, Connection host) {
     this.id = id;
     this.idString = com.xpdustry.claj.server.util.Strings.longToBase64(id);
@@ -93,6 +97,8 @@ public class ClajRoom implements NetListener {
         
         if (tcp) con.sendTCP(o);
         else con.sendUDP(o);
+        
+        transferredPackets.addUploadMark();
 
       // Notify that this connection doesn't exist, this case normally never happen
       } else if (host.isConnected()) { 
@@ -112,6 +118,8 @@ public class ClajRoom implements NetListener {
       p.conID = connection.getID();
       p.buffer = (ByteBuffer)object;
       host.sendTCP(p);
+      
+      transferredPackets.addDownloadMark();
     }
   }
   

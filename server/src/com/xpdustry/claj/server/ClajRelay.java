@@ -100,6 +100,7 @@ public class ClajRelay extends Server implements NetListener {
   
     Log.debug("Connection @ received.", Strings.conIDToString(connection));
     connection.setArbitraryData(new Ratekeeper());
+    connection.setName("Connection" + Strings.conIDToString(connection)); // fix id format in stacktraces
     ClajEvents.fire(new ClajEvents.ClientConnectedEvent(connection));
   }
   
@@ -283,9 +284,7 @@ public class ClajRelay extends Server implements NetListener {
         notifiedIdle.remove(((ClajPackets.ConnectionWrapperPacket)object).conID);
       
       room.received(connection, object);
-      // Can be used to make metrics about rooms activity
-      ClajEvents.fire(new ClajEvents.PacketTransmittedEvent(connection, room));
-      
+
     // Puts in queue; if full, future packets will be ignored.
     } else if (object instanceof ByteBuffer) {
       ByteBuffer[] queue = packetQueue.get(connection.getID(), () -> new ByteBuffer[packetQueueSize]);
@@ -300,7 +299,7 @@ public class ClajRelay extends Server implements NetListener {
     }
   }
   
-  /** Does nothing if the connection idle state has already been notified to the room host. */
+  /** Does nothing if the connection idle state was already notified to the room host. */
   @Override
   public void idle(Connection connection) {
     if (!(connection.getArbitraryData() instanceof Ratekeeper)) return;
@@ -335,6 +334,7 @@ public class ClajRelay extends Server implements NetListener {
     private final NetworkSpeed networkSpeed;
     private int lastPos;
     
+    /** @param networkSpeed is for debugging, sets to null to disable it */
     public Serializer(NetworkSpeed networkSpeed) {
       this.networkSpeed = networkSpeed;
     }

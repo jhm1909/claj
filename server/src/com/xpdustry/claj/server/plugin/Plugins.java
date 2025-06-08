@@ -29,9 +29,9 @@ public class Plugins {
 
   private PluginClassLoader mainLoader = new PluginClassLoader(getClass().getClassLoader());
   private Json json = new Json();
-  
   /** Ordered plugins cache. Set to null to invalidate. */
   private @Nullable Seq<LoadedPlugin> lastOrderedPlugins = new Seq<>();
+  
   private Seq<LoadedPlugin> plugins = new Seq<>();
   private ObjectMap<Class<?>, PluginMeta> metas = new ObjectMap<>();
 
@@ -40,8 +40,7 @@ public class Plugins {
     return mainLoader;
   }
 
-  /** Returns a file named 'config.json' in a special folder for the specified plugin.
-   * Call this in init(). */
+  /** Returns a file named 'config.json' in a special folder for the specified plugin. Call this in init(). */
   public Fi getConfig(Plugin plugin) {
     PluginMeta load = metas.get(plugin.getClass());
     if(load == null) throw new IllegalArgumentException("Plugin is not loaded yet (or missing)!");
@@ -157,8 +156,10 @@ public class Plugins {
     return plugins.select(l -> l.enabled()).map(l -> l.name + ":" + l.meta.version);
   }
 
-  /** @return the plugins that the client is missing.
-   * The inputted array is changed to contain the extra plugins that the client has but the server doesn't.*/
+  /** 
+   * @return The plugins that the client is missing. <br>
+   *         The inputted array is changed to contain the extra plugins that the client has but the server doesn't.
+   */
   public Seq<String> getIncompatibility(Seq<String> out) {
     Seq<String> plugins = getPluginStrings();
     Seq<String> result = plugins.copy();
@@ -252,8 +253,10 @@ public class Plugins {
     return true;
   }
 
-  /** Loads a plugin file+meta, but does not add it to the list.
-   * Note that directories can be loaded as plugins. */
+  /** 
+   * Loads a plugin file+meta, but does not add it to the list. <br>
+   * Note that directories can be loaded as plugins.
+   */
   private LoadedPlugin loadPlugin(Fi sourceFile, boolean overwrite, boolean initialize) throws Exception {
     Time.mark();
 
